@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, Package, Building2 } from 'lucide-react';
-import { repuestosAPI, Repuesto, productoProveedorAPI } from '../lib/api';
+import { repuestosAPI, Repuesto } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 type ProductoConProveedores = {
   producto: Repuesto;
@@ -21,7 +22,7 @@ export default function ComparativaProveedores() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => {
     cargarComparativas();
@@ -42,47 +43,80 @@ export default function ComparativaProveedores() {
 
   const cargarComparativas = async () => {
     try {
-      const todosProductos = await repuestosAPI.getAll();
-      const productosConProveedores: ProductoConProveedores[] = [];
+      console.log('Iniciando carga de comparativas...');
+      
+      // Estrategia optimizada: Primero obtener todos los productos con proveedores
+      const { data: todasComparativas, error } = await supabase
+        .from('producto_proveedor')
+        .select(`
+          *,
+          proveedores (
+            id_proveedor,
+            nombre_proveedor
+          )
+        `)
+        .eq('activo', true);
 
-      for (const producto of todosProductos) {
-        try {
-          const comparativas = await productoProveedorAPI.getByProducto(String(producto.CB));
-          
-          if (comparativas.length > 0) {
-            const proveedoresData = comparativas.map(comp => ({
-              id: comp.proveedor_id,
-              // @ts-ignore - proveedores viene del join
-              nombre: comp.proveedores?.nombre_proveedor || 'Desconocido',
-              precio: Number(comp.precio_proveedor),
-              esPrincipal: comp.es_proveedor_principal || false,
-            }));
-
-            const precios = proveedoresData.map(p => p.precio).filter(p => p > 0);
-            
-            if (precios.length > 0) {
-              const precioMasBajo = Math.min(...precios);
-              const precioMasAlto = Math.max(...precios);
-              const diferencia = precioMasAlto - precioMasBajo;
-
-              productosConProveedores.push({
-                producto,
-                proveedores: proveedoresData,
-                precioMasBajo,
-                precioMasAlto,
-                diferencia,
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error cargando proveedores para ${producto.CB}:`, error);
-        }
+      if (error) {
+        console.error('Error cargando comparativas:', error);
+        throw error;
       }
 
+      console.log(`Total de relaciones producto-proveedor: ${todasComparativas?.length || 0}`);
+
+      // Agrupar por producto
+      const productosPorCB = new Map<string, any[]>();
+      todasComparativas?.forEach(comp => {
+        if (!productosPorCB.has(comp.producto_cb)) {
+          productosPorCB.set(comp.producto_cb, []);
+        }
+        productosPorCB.get(comp.producto_cb)!.push(comp);
+      });
+
+      console.log(`Productos únicos con proveedores: ${productosPorCB.size}`);
+
+      // Obtener información de los productos
+      const todosProductos = await repuestosAPI.getAll();
+      const productosMap = new Map(todosProductos.map(p => [String(p.CB), p]));
+
+      const productosConProveedores: ProductoConProveedores[] = [];
+
+      // Procesar cada producto que tiene proveedores
+      productosPorCB.forEach((comparativas, productoCB) => {
+        const producto = productosMap.get(productoCB);
+        
+        if (producto) {
+          const proveedoresData = comparativas.map(comp => ({
+            id: comp.proveedor_id,
+            // @ts-ignore
+            nombre: comp.proveedores?.nombre_proveedor || 'Desconocido',
+            precio: Number(comp.precio_proveedor) || 0,
+            esPrincipal: comp.es_proveedor_principal || false,
+          }));
+
+          const precios = proveedoresData.map(p => p.precio);
+          const preciosValidos = precios.filter(p => p > 0);
+          
+          const precioMasBajo = preciosValidos.length > 0 ? Math.min(...preciosValidos) : 0;
+          const precioMasAlto = preciosValidos.length > 0 ? Math.max(...preciosValidos) : 0;
+          const diferencia = precioMasAlto - precioMasBajo;
+
+          productosConProveedores.push({
+            producto,
+            proveedores: proveedoresData,
+            precioMasBajo,
+            precioMasAlto,
+            diferencia,
+          });
+        }
+      });
+
+      console.log(`Total de productos procesados: ${productosConProveedores.length}`);
       setProductos(productosConProveedores);
       setFilteredProductos(productosConProveedores);
     } catch (error) {
       console.error('Error al cargar comparativas:', error);
+      alert('Error al cargar las comparativas. Por favor revisa la consola.');
     } finally {
       setLoading(false);
     }
@@ -117,6 +151,22 @@ export default function ComparativaProveedores() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Mostrar:</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
           </div>
         </div>
 
@@ -166,11 +216,24 @@ export default function ComparativaProveedores() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-600">Cargando comparativas...</div>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando comparativas...</p>
+            <p className="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos</p>
+          </div>
         ) : filteredProductos.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No se encontraron productos con proveedores configurados</p>
+            <p className="text-gray-900 font-semibold mb-2">No se encontraron productos con proveedores configurados</p>
+            <p className="text-gray-600 text-sm mb-4">
+              Para ver comparativas, primero debes asignar proveedores a los productos desde el inventario.
+            </p>
+            <button
+              onClick={cargarComparativas}
+              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+            >
+              Recargar
+            </button>
           </div>
         ) : (
           <>
@@ -208,8 +271,8 @@ export default function ComparativaProveedores() {
                   {/* Lista de Proveedores */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {item.proveedores.map((proveedor, idx) => {
-                      const esMasBarato = proveedor.precio === item.precioMasBajo;
-                      const esMasCaro = proveedor.precio === item.precioMasAlto;
+                      const esMasBarato = proveedor.precio > 0 && proveedor.precio === item.precioMasBajo && item.precioMasBajo > 0;
+                      const esMasCaro = proveedor.precio > 0 && proveedor.precio === item.precioMasAlto && item.precioMasAlto > 0;
 
                       return (
                         <div
@@ -245,21 +308,27 @@ export default function ComparativaProveedores() {
                               </p>
                               <div className="flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-gray-500" />
-                                <span className="text-xl font-bold text-gray-900">
-                                  ${proveedor.precio.toFixed(2)}
-                                </span>
+                                {proveedor.precio > 0 ? (
+                                  <span className="text-xl font-bold text-gray-900">
+                                    ${proveedor.precio.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-gray-500 italic">
+                                    Sin precio configurado
+                                  </span>
+                                )}
                               </div>
-                              {item.proveedores.length > 1 && (
+                              {item.proveedores.length > 1 && proveedor.precio > 0 && item.precioMasBajo > 0 && (
                                 <div className="mt-2 text-xs">
                                   {esMasBarato ? (
                                     <span className="text-green-700 font-medium">
                                       Ahorro: ${item.diferencia.toFixed(2)}
                                     </span>
-                                  ) : (
+                                  ) : proveedor.precio > item.precioMasBajo ? (
                                     <span className="text-red-700 font-medium">
                                       +${(proveedor.precio - item.precioMasBajo).toFixed(2)} más caro
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
                               )}
                             </div>
@@ -291,25 +360,41 @@ export default function ComparativaProveedores() {
 
             {/* Paginación */}
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between text-sm text-gray-600">
-                <span>
+              <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                <span className="text-gray-600">
                   Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProductos.length)} de {filteredProductos.length} productos
                 </span>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Primera
+                  </button>
+                  <button
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Anterior
                   </button>
-                  <span className="px-3 py-1">{currentPage} de {totalPages}</span>
+                  <span className="px-4 py-2 bg-gray-900 text-white rounded-lg font-medium">
+                    {currentPage} / {totalPages}
+                  </span>
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Siguiente
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Última
                   </button>
                 </div>
               </div>
