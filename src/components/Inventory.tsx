@@ -45,7 +45,7 @@ export default function Inventory() {
     ESTANTE: null,
     NIVEL: null,
   });
-  
+
   // Estados para información de proveedores
   const [proveedorData, setProveedorData] = useState({
     nFactura: '',
@@ -54,12 +54,12 @@ export default function Inventory() {
     cantidad: 0,
     costo: 0,
   });
-  
+
   // Estados para el nuevo flujo de proveedores
   const [showProveedorSelector, setShowProveedorSelector] = useState(false);
   const [availableProveedores, setAvailableProveedores] = useState<Proveedor[]>([]);
   const [selectedProveedor, setSelectedProveedor] = useState<number | null>(null);
-  
+
   // Estados para los 3 slots de proveedores
   const [proveedor1, setProveedor1] = useState<{ id: number | null; nombre: string; precio: number }>({
     id: null,
@@ -94,10 +94,10 @@ export default function Inventory() {
   const cargarComparativaProveedores = async (productoCB: string) => {
     try {
       const comparativas = await productoProveedorAPI.getByProducto(productoCB);
-      
+
       // Resetear los proveedores
       resetProveedoresSelector();
-      
+
       // Cargar hasta 3 proveedores guardados
       if (comparativas.length > 0) {
         if (comparativas[0]) {
@@ -112,7 +112,7 @@ export default function Inventory() {
             setSelectedProveedor(comparativas[0].proveedor_id);
           }
         }
-        
+
         if (comparativas[1]) {
           // @ts-ignore - proveedores viene del join en la consulta
           const provData = comparativas[1].proveedores;
@@ -125,7 +125,7 @@ export default function Inventory() {
             setSelectedProveedor(comparativas[1].proveedor_id);
           }
         }
-        
+
         if (comparativas[2]) {
           // @ts-ignore - proveedores viene del join en la consulta
           const provData = comparativas[2].proveedores;
@@ -200,7 +200,7 @@ export default function Inventory() {
       proveedor3,
     };
     const proveedor = proveedorMap[proveedorKey];
-    
+
     if (proveedor.id) {
       setSelectedProveedor(proveedor.id);
       setProveedorData({
@@ -359,7 +359,7 @@ export default function Inventory() {
     setIsExistingProduct(true);
     setShowProductTypeDialog(false);
     setSearchCI('');
-    
+
     // Limpiar el formulario
     setFormData({
       CB: '',
@@ -390,7 +390,7 @@ export default function Inventory() {
 
   const handleCISearch = async (ci: string) => {
     setSearchCI(ci);
-    
+
     if (!ci) {
       // Si se borra el CI, limpiar el formulario
       setFormData({
@@ -415,16 +415,16 @@ export default function Inventory() {
 
     // Buscar el producto por CI
     const foundProduct = products.find(p => String(p.CI) === ci);
-    
+
     if (foundProduct) {
       // Autocompletar los campos de información del producto con el stock real
       setFormData({
         ...foundProduct,
       });
-      
+
       // Cargar automáticamente los proveedores de este producto
       await cargarComparativaProveedores(String(foundProduct.CB));
-      
+
       // Abrir automáticamente el selector de proveedores
       setShowProveedorSelector(true);
     } else {
@@ -508,10 +508,10 @@ export default function Inventory() {
       // Calcular el nuevo stock
       const stockActual = typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK;
       const cantidadAgregar = isExistingProduct ? proveedorData.cantidad : (modalMode === 'edit' ? entradaStock : 0);
-      const nuevoStock = isExistingProduct 
-        ? stockActual + cantidadAgregar 
+      const nuevoStock = isExistingProduct
+        ? stockActual + cantidadAgregar
         : (modalMode === 'edit' ? stockActual + entradaStock - salidaStock : stockActual);
-      
+
       const dataToSave = {
         ...formData,
         STOCK: nuevoStock,
@@ -521,7 +521,7 @@ export default function Inventory() {
         if (isExistingProduct) {
           // Actualizar producto existente con nuevo stock
           await repuestosAPI.update(String(formData.CB), dataToSave);
-          
+
           // Guardar comparativas para producto existente
           const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
           if (hayProveedores && formData.CB) {
@@ -531,7 +531,7 @@ export default function Inventory() {
               console.error('Error al guardar comparativas:', error);
             }
           }
-          
+
           // Crear entrada si hay datos de proveedor
           if (proveedorData.cantidad > 0) {
             await entradasAPI.create({
@@ -551,7 +551,7 @@ export default function Inventory() {
         } else {
           // Crear producto nuevo
           await repuestosAPI.create(dataToSave);
-          
+
           // Guardar comparativas DESPUÉS de crear el producto
           const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
           if (hayProveedores && formData.CB) {
@@ -565,7 +565,7 @@ export default function Inventory() {
       } else {
         // Editar producto existente
         await repuestosAPI.update(String(selectedProduct!.CB), dataToSave);
-        
+
         // Guardar comparativas para producto editado
         const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
         if (hayProveedores && formData.CB) {
@@ -575,7 +575,7 @@ export default function Inventory() {
             console.error('Error al guardar comparativas:', error);
           }
         }
-        
+
         // Crear entrada si hay entradas de stock
         if (entradaStock > 0 && proveedorData.cantidad > 0) {
           await entradasAPI.create({
@@ -756,1447 +756,1443 @@ export default function Inventory() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        {/* Búsqueda general */}
-        <div className="flex flex-col md:flex-row gap-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Buscar por código (CB/CI), nombre, tipo, marca, referencia o modelo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Mostrar:</label>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          {permisos.puedeCrearInventario && (
-            <button
-              onClick={handleCreate}
-              className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-medium"
-            >
-              <Plus className="w-5 h-5" />
-              Agregar Producto
-            </button>
-          )}
-        </div>
+            {/* Búsqueda general */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Buscar por código (CB/CI), nombre, tipo, marca, referencia o modelo..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Mostrar:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              {permisos.puedeCrearInventario && (
+                <button
+                  onClick={handleCreate}
+                  className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-medium"
+                >
+                  <Plus className="w-5 h-5" />
+                  Agregar Producto
+                </button>
+              )}
+            </div>
 
-        {/* Filtros específicos */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Filtros Avanzados
-            </h3>
-            {(productoFilter || tipoFilter || marcaFilter) && (
-              <button
-                onClick={() => {
-                  setProductoFilter('');
-                  setTipoFilter('');
-                  setMarcaFilter('');
-                }}
-                className="text-xs text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1 transition-colors"
-              >
-                <X className="w-3 h-3" />
-                Limpiar filtros
-              </button>
+            {/* Filtros específicos */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filtros Avanzados
+                </h3>
+                {(productoFilter || tipoFilter || marcaFilter) && (
+                  <button
+                    onClick={() => {
+                      setProductoFilter('');
+                      setTipoFilter('');
+                      setMarcaFilter('');
+                    }}
+                    className="text-xs text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                    Producto
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Buscar producto..."
+                      value={productoFilter}
+                      onChange={(e) => setProductoFilter(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
+                    />
+                  </div>
+                  {productoFilter && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Filtrando por: <span className="font-medium text-gray-700">{productoFilter}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                    Tipo
+                  </label>
+                  <CustomSelect
+                    value={tipoFilter}
+                    onChange={setTipoFilter}
+                    options={uniqueTipos}
+                    placeholder="Todos los tipos"
+                    label="Tipo"
+                  />
+                  {tipoFilter && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Seleccionado: <span className="font-medium text-gray-700">{tipoFilter}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                    Marca
+                  </label>
+                  <CustomSelect
+                    value={marcaFilter}
+                    onChange={setMarcaFilter}
+                    options={uniqueMarcas}
+                    placeholder="Todas las marcas"
+                    label="Marca"
+                  />
+                  {marcaFilter && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Seleccionada: <span className="font-medium text-gray-700">{marcaFilter}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Contador de resultados */}
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">
+                    {filteredProducts.length === products.length ? (
+                      <>Mostrando todos los productos ({products.length})</>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-gray-900">{filteredProducts.length}</span> de {products.length} productos
+                      </>
+                    )}
+                  </span>
+                  {(productoFilter || tipoFilter || marcaFilter) && (
+                    <span className="text-gray-500 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Filtros activos
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-12 text-gray-600">
+                Cargando productos...
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-12 text-gray-600">
+                No se encontraron productos
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        <button
+                          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                          className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                        >
+                          Código CI
+                          <ArrowUpDown className="w-4 h-4" />
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Producto
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Referencia
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Tipo
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Marca
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Stock
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Precio
+                      </th>
+                      {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                          Acciones
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentProducts.map((product) => (
+                      <tr
+                        key={product.CB}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                          {product.CI || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700">
+                          {product.PRODUCTO}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700 font-mono">
+                          {product.REFERENCIA || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700">
+                          {product.TIPO || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700">
+                          {product.MARCA || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${Number(product.STOCK) < 10
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-green-100 text-green-700'
+                              }`}
+                          >
+                            {product.STOCK}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                          ${Number(product.PRECIO).toFixed(2)}
+                        </td>
+                        {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => handleViewDetails(product)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                title="Ver detalles"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {permisos.puedeEditarInventario && (
+                                <button
+                                  onClick={() => handleEdit(product)}
+                                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                                  title="Editar"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              )}
+                              {permisos.puedeEliminarInventario && (
+                                <button
+                                  onClick={() => handleDelete(product.CB)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Paginación */}
+            {filteredProducts.length > 0 && (
+              <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProducts.length)} de {filteredProducts.length} productos
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Anterior
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Mostrar solo algunas páginas alrededor de la actual
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-3 py-1 border rounded-lg text-sm font-medium transition ${currentPage === page
+                            ? 'bg-gray-900 text-white border-gray-900'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="px-2 text-gray-400">...</span>;
+                    }
+                    return null;
+                  })}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
-                Producto
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar producto..."
-                  value={productoFilter}
-                  onChange={(e) => setProductoFilter(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-              {productoFilter && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Filtrando por: <span className="font-medium text-gray-700">{productoFilter}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
-                Tipo
-              </label>
-              <CustomSelect
-                value={tipoFilter}
-                onChange={setTipoFilter}
-                options={uniqueTipos}
-                placeholder="Todos los tipos"
-                label="Tipo"
-              />
-              {tipoFilter && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Seleccionado: <span className="font-medium text-gray-700">{tipoFilter}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
-                Marca
-              </label>
-              <CustomSelect
-                value={marcaFilter}
-                onChange={setMarcaFilter}
-                options={uniqueMarcas}
-                placeholder="Todas las marcas"
-                label="Marca"
-              />
-              {marcaFilter && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Seleccionada: <span className="font-medium text-gray-700">{marcaFilter}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contador de resultados */}
-          <div className="mt-4 pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">
-                {filteredProducts.length === products.length ? (
-                  <>Mostrando todos los productos ({products.length})</>
-                ) : (
-                  <>
-                    <span className="font-semibold text-gray-900">{filteredProducts.length}</span> de {products.length} productos
-                  </>
-                )}
-              </span>
-              {(productoFilter || tipoFilter || marcaFilter) && (
-                <span className="text-gray-500 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Filtros activos
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12 text-gray-600">
-            Cargando productos...
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-12 text-gray-600">
-            No se encontraron productos
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    <button
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="flex items-center gap-1 hover:text-gray-900 transition-colors"
-                    >
-                      Código CI
-                      <ArrowUpDown className="w-4 h-4" />
-                    </button>
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Producto
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Referencia
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Tipo
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Marca
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Stock
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Precio
-                  </th>
-                  {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                      Acciones
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {currentProducts.map((product) => (
-                  <tr
-                    key={product.CB}
-                    className="border-b border-gray-100 hover:bg-gray-50"
-                  >
-                    <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                      {product.CI || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {product.PRODUCTO}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700 font-mono">
-                      {product.REFERENCIA || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {product.TIPO || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {product.MARCA || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-sm">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${Number(product.STOCK) < 10
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-green-100 text-green-700'
-                          }`}
-                      >
-                        {product.STOCK}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                      ${Number(product.PRECIO).toFixed(2)}
-                    </td>
-                    {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleViewDetails(product)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                            title="Ver detalles"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {permisos.puedeEditarInventario && (
-                            <button
-                              onClick={() => handleEdit(product)}
-                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                              title="Editar"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {permisos.puedeEliminarInventario && (
-                            <button
-                              onClick={() => handleDelete(product.CB)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Paginación */}
-        {filteredProducts.length > 0 && (
-          <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
-            <div className="text-sm text-gray-600">
-              Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProducts.length)} de {filteredProducts.length} productos
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          {showModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]"
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative"
               >
-                Anterior
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                // Mostrar solo algunas páginas alrededor de la actual
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-3 py-1 border rounded-lg text-sm font-medium transition ${currentPage === page
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                } else if (
-                  page === currentPage - 2 ||
-                  page === currentPage + 2
-                ) {
-                  return <span key={page} className="px-2 text-gray-400">...</span>;
-                }
-                return null;
-              })}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]"
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative"
-          >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">
-                {modalMode === 'create' 
-                  ? (isExistingProduct ? 'Agregar Stock a Producto Existente' : 'Agregar Producto Nuevo')
-                  : 'Editar Producto'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setIsExistingProduct(false);
-                  setSearchCI('');
-                  setShowProveedorSelector(false);
-                  setSelectedProveedor(null);
-                  setProveedorData({
-                    nFactura: '',
-                    proveedor: '',
-                    fecha: '',
-                    cantidad: 0,
-                    costo: 0,
-                  });
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6">
-              {/* Sección: Información del Producto */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-gray-900">
-                  <div className="w-1 h-6 bg-gray-900 rounded"></div>
-                  <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">
-                    Información del Producto
-                  </h3>
-                </div>
-
-                {/* Campo CI para buscar producto existente - Siempre visible */}
-                {isExistingProduct && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Código Interno (CI) *
-                      <Tooltip content="Ingresa el CI para buscar el producto" />
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={searchCI || ''}
-                        onChange={(e) => handleCISearch(e.target.value)}
-                        placeholder="Ingresa el CI del producto"
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                        list="ci-list"
-                      />
-                      <datalist id="ci-list">
-                        {products.map((prod, idx) => (
-                          <option key={idx} value={String(prod.CI)} />
-                        ))}
-                      </datalist>
-                      {searchCI && formData.PRODUCTO && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
-                            ✓ Encontrado
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Mostrar información del producto en formato de texto cuando se encuentra */}
-                {isExistingProduct && formData.PRODUCTO ? (
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Producto</p>
-                        <p className="text-base font-semibold text-gray-900">{formData.PRODUCTO}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Tipo</p>
-                        <p className="text-base font-semibold text-gray-900">{formData.TIPO || 'NN'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Marca</p>
-                        <p className="text-base font-semibold text-gray-900">{formData.MARCA || 'NN'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Referencia</p>
-                        <p className="text-base font-semibold text-gray-900">{formData.REFERENCIA || 'NN'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Modelo</p>
-                        <p className="text-base font-semibold text-gray-900">{formData.MODELO_ESPECIFICACION || 'NN'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Stock Disponible</p>
-                        <p className="text-base font-bold text-green-600">{formData.STOCK} unidades</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : !isExistingProduct && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Código Barras (CB)
-                      <Tooltip content="Código De Barras (generado automáticamente)" />
-                    </label>
-                    {modalMode === 'edit' ? (
-                      <div className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-                        {formData.CB || '-'}
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={formData.CB || ''}
-                          readOnly
-                          className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
-                            Auto
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Código Interno (CI) {isExistingProduct && '*'}
-                      <Tooltip content={isExistingProduct ? "Ingresa el CI para buscar el producto" : "Código interno (generado automáticamente)"} />
-                    </label>
-                    {modalMode === 'edit' ? (
-                      <div className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
-                        {formData.CI || '-'}
-                      </div>
-                    ) : isExistingProduct ? (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={searchCI || ''}
-                          onChange={(e) => handleCISearch(e.target.value)}
-                          placeholder="Ingresa el CI del producto"
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                          list="ci-list"
-                        />
-                        <datalist id="ci-list">
-                          {products.map((prod, idx) => (
-                            <option key={idx} value={String(prod.CI)} />
-                          ))}
-                        </datalist>
-                        {searchCI && formData.PRODUCTO && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
-                              ✓ Encontrado
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={formData.CI || ''}
-                          readOnly
-                          className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
-                        />
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
-                            Auto
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Producto *
-                      <Tooltip content="Nombre del producto" />
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.PRODUCTO || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, PRODUCTO: e.target.value })
-                      }
-                      readOnly={(isGestionInventario && modalMode === 'edit') || (isExistingProduct && !!formData.PRODUCTO)}
-                      placeholder="Ej: Filtro de aceite, Abrazadera, etc."
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                      list="productos-list"
-                    />
-                    <datalist id="productos-list">
-                      {Array.from(new Set(products.map(p => p.PRODUCTO))).slice(0, 50).map((prod, idx) => (
-                        <option key={idx} value={prod} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Tipo
-                      <Tooltip content="Categoría del repuesto" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.TIPO || ''}
-                      onChange={(e) => setFormData({ ...formData, TIPO: e.target.value || null })}
-                      readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
-                      placeholder="Selecciona o escribe un tipo"
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                      list="tipos-list"
-                    />
-                    <datalist id="tipos-list">
-                      {uniqueTipos.map((tipo, idx) => (
-                        <option key={idx} value={tipo} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Marca
-                      <Tooltip content="Marca del fabricante" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.MARCA || ''}
-                      onChange={(e) => setFormData({ ...formData, MARCA: e.target.value || null })}
-                      readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
-                      placeholder="Selecciona o escribe una marca"
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                      list="marcas-list"
-                    />
-                    <datalist id="marcas-list">
-                      {uniqueMarcas.map((marca, idx) => (
-                        <option key={idx} value={marca} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Modelo / Especificación
-                      <Tooltip content="Modelo compatible" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.MODELO_ESPECIFICACION || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          MODELO_ESPECIFICACION: e.target.value || null,
-                        })
-                      }
-                      readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
-                      placeholder="Ej: Mazda 3, Toyota Corolla 2015"
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${(isExistingProduct && formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit') ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Referencia
-                      <Tooltip content="Referencia del fabricante" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.REFERENCIA || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, REFERENCIA: e.target.value || null })
-                      }
-                      readOnly={(isGestionInventario && modalMode === 'edit') || (isExistingProduct && !!formData.PRODUCTO)}
-                      placeholder="Ej: B097-34-160"
-                      className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Estante
-                      <Tooltip content="Ubicación del estante" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.ESTANTE || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, ESTANTE: e.target.value || null })
-                      }
-                      placeholder="Ej: A1, B2, C3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Nivel
-                      <Tooltip content="Nivel en el estante" />
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.NIVEL || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, NIVEL: e.target.value || null })
-                      }
-                      placeholder="Ej: 1, 2, 3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                    {modalMode === 'create' && !isExistingProduct && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          Stock Inicial *
-                          <Tooltip content="Cantidad inicial en inventario" />
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={formData.STOCK || 0}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              STOCK: parseInt(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="Ej: 50"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Sección: Información de Proveedores */}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-red-600">
-                  <div className="w-1 h-6 bg-red-600 rounded"></div>
-                  <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">
-                    Información de Proveedores
-                  </h3>
-                </div>
-
-                {/* Botón para abrir selector de proveedores */}
-                <div className="flex justify-center mb-4">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {modalMode === 'create'
+                      ? (isExistingProduct ? 'Agregar Stock a Producto Existente' : 'Agregar Producto Nuevo')
+                      : 'Editar Producto'}
+                  </h2>
                   <button
-                    type="button"
                     onClick={() => {
-                      setShowProveedorSelector(true);
-                      // Cargar comparativas guardadas si el producto ya existe
-                      if (formData.CB) {
-                        cargarComparativaProveedores(String(formData.CB));
-                      }
+                      setShowModal(false);
+                      setIsExistingProduct(false);
+                      setSearchCI('');
+                      setShowProveedorSelector(false);
+                      setSelectedProveedor(null);
+                      setProveedorData({
+                        nFactura: '',
+                        proveedor: '',
+                        fecha: '',
+                        cantidad: 0,
+                        costo: 0,
+                      });
                     }}
-                    className="px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition font-medium text-sm"
+                    className="text-gray-400 hover:text-gray-600"
                   >
-                    Seleccionar proveedor del producto
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
 
-                {/* Mostrar proveedor seleccionado */}
-                {selectedProveedor && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">Proveedor seleccionado:</p>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {availableProveedores.find(p => p.id_proveedor === selectedProveedor)?.nombre_proveedor}
-                        </p>
+                <form onSubmit={handleSubmit} className="p-6">
+                  {/* Sección: Información del Producto */}
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-gray-900">
+                      <div className="w-1 h-6 bg-gray-900 rounded"></div>
+                      <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">
+                        Información del Producto
+                      </h3>
+                    </div>
+
+                    {/* Campo CI para buscar producto existente - Siempre visible */}
+                    {isExistingProduct && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                          Código Interno (CI) *
+                          <Tooltip content="Ingresa el CI para buscar el producto" />
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={searchCI || ''}
+                            onChange={(e) => handleCISearch(e.target.value)}
+                            placeholder="Ingresa el CI del producto"
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                            list="ci-list"
+                          />
+                          <datalist id="ci-list">
+                            {products.map((prod, idx) => (
+                              <option key={idx} value={String(prod.CI)} />
+                            ))}
+                          </datalist>
+                          {searchCI && formData.PRODUCTO && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
+                                ✓ Encontrado
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedProveedor(null)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      N° Factura
-                    </label>
-                    <input
-                      type="text"
-                      value={proveedorData.nFactura || ''}
-                      onChange={(e) => setProveedorData({ ...proveedorData, nFactura: e.target.value })}
-                      placeholder="Ej: FAC-2024-001"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha
-                    </label>
-                    <input
-                      type="date"
-                      value={proveedorData.fecha || ''}
-                      onChange={(e) => setProveedorData({ ...proveedorData, fecha: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cantidad {isExistingProduct && '*'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={proveedorData.cantidad || ''}
-                      onChange={(e) => setProveedorData({ ...proveedorData, cantidad: parseInt(e.target.value) || 0 })}
-                      required={isExistingProduct}
-                      placeholder="Ej: 10"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Costo
-                      <Tooltip content="Costo de compra al proveedor" />
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={proveedorData.costo || ''}
-                      onChange={(e) => setProveedorData({ ...proveedorData, costo: parseFloat(e.target.value) || 0 })}
-                      placeholder="Ej: 15.00"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      Valor Venta *
-                      <Tooltip content="Precio de venta al cliente" />
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      required
-                      value={formData.PRECIO || 0}
-                      readOnly={isGestionInventario && modalMode === 'edit'}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          PRECIO: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="Ej: 25.50"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sección de edición: Entradas y Salidas */}
-              {modalMode === 'edit' && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Ajuste de Stock</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        Cantidad Actual
-                        <Tooltip content="Stock actual en inventario (solo lectura)" />
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.STOCK || 0}
-                        readOnly
-                        className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        Entradas (+)
-                        <Tooltip content="Cantidad a agregar al stock" />
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={entradaStock || 0}
-                        onChange={(e) => setEntradaStock(parseInt(e.target.value) || 0)}
-                        placeholder="Ej: 10"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        Salidas (-)
-                        <Tooltip content="Cantidad a quitar del stock" />
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={salidaStock || 0}
-                        onChange={(e) => setSalidaStock(parseInt(e.target.value) || 0)}
-                        placeholder="Ej: 5"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {(entradaStock > 0 || salidaStock > 0) && (
-                    <div className="mt-4 p-3 bg-white border border-blue-300 rounded-lg">
-                      <div className="text-sm text-blue-900">
-                        <div className="font-medium mb-2">Resumen del ajuste:</div>
-                        <div className="space-y-1">
-                          <div>Stock actual: <span className="font-bold">{typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK}</span></div>
-                          {entradaStock > 0 && <div className="text-green-700">+ Entradas: {entradaStock}</div>}
-                          {salidaStock > 0 && <div className="text-red-700">- Salidas: {salidaStock}</div>}
-                          <div className="pt-2 border-t border-blue-300">
-                            Nuevo stock: <span className="font-bold text-lg">{(typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK) + entradaStock - salidaStock}</span>
+                    {/* Mostrar información del producto en formato de texto cuando se encuentra */}
+                    {isExistingProduct && formData.PRODUCTO ? (
+                      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Producto</p>
+                            <p className="text-base font-semibold text-gray-900">{formData.PRODUCTO}</p>
                           </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Tipo</p>
+                            <p className="text-base font-semibold text-gray-900">{formData.TIPO || 'NN'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Marca</p>
+                            <p className="text-base font-semibold text-gray-900">{formData.MARCA || 'NN'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Referencia</p>
+                            <p className="text-base font-semibold text-gray-900">{formData.REFERENCIA || 'NN'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Modelo</p>
+                            <p className="text-base font-semibold text-gray-900">{formData.MODELO_ESPECIFICACION || 'NN'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Stock Disponible</p>
+                            <p className="text-base font-bold text-green-600">{formData.STOCK} unidades</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : !isExistingProduct && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Código Barras (CB)
+                            <Tooltip content="Código De Barras (generado automáticamente)" />
+                          </label>
+                          {modalMode === 'edit' ? (
+                            <div className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                              {formData.CB || '-'}
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={formData.CB || ''}
+                                readOnly
+                                className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
+                              />
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
+                                  Auto
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Código Interno (CI) {isExistingProduct && '*'}
+                            <Tooltip content={isExistingProduct ? "Ingresa el CI para buscar el producto" : "Código interno (generado automáticamente)"} />
+                          </label>
+                          {modalMode === 'edit' ? (
+                            <div className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                              {formData.CI || '-'}
+                            </div>
+                          ) : isExistingProduct ? (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={searchCI || ''}
+                                onChange={(e) => handleCISearch(e.target.value)}
+                                placeholder="Ingresa el CI del producto"
+                                required
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                                list="ci-list"
+                              />
+                              <datalist id="ci-list">
+                                {products.map((prod, idx) => (
+                                  <option key={idx} value={String(prod.CI)} />
+                                ))}
+                              </datalist>
+                              {searchCI && formData.PRODUCTO && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
+                                    ✓ Encontrado
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={formData.CI || ''}
+                                readOnly
+                                className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
+                              />
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded font-medium">
+                                  Auto
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Producto *
+                            <Tooltip content="Nombre del producto" />
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.PRODUCTO || ''}
+                            onChange={(e) =>
+                              setFormData({ ...formData, PRODUCTO: e.target.value })
+                            }
+                            readOnly={(isGestionInventario && modalMode === 'edit') || (isExistingProduct && !!formData.PRODUCTO)}
+                            placeholder="Ej: Filtro de aceite, Abrazadera, etc."
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            list="productos-list"
+                          />
+                          <datalist id="productos-list">
+                            {Array.from(new Set(products.map(p => p.PRODUCTO))).slice(0, 50).map((prod, idx) => (
+                              <option key={idx} value={prod} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Tipo
+                            <Tooltip content="Categoría del repuesto" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.TIPO || ''}
+                            onChange={(e) => setFormData({ ...formData, TIPO: e.target.value || null })}
+                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            placeholder="Selecciona o escribe un tipo"
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            list="tipos-list"
+                          />
+                          <datalist id="tipos-list">
+                            {uniqueTipos.map((tipo, idx) => (
+                              <option key={idx} value={tipo} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Marca
+                            <Tooltip content="Marca del fabricante" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.MARCA || ''}
+                            onChange={(e) => setFormData({ ...formData, MARCA: e.target.value || null })}
+                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            placeholder="Selecciona o escribe una marca"
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            list="marcas-list"
+                          />
+                          <datalist id="marcas-list">
+                            {uniqueMarcas.map((marca, idx) => (
+                              <option key={idx} value={marca} />
+                            ))}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Modelo / Especificación
+                            <Tooltip content="Modelo compatible" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.MODELO_ESPECIFICACION || ''}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                MODELO_ESPECIFICACION: e.target.value || null,
+                              })
+                            }
+                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            placeholder="Ej: Mazda 3, Toyota Corolla 2015"
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${(isExistingProduct && formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit') ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Referencia
+                            <Tooltip content="Referencia del fabricante" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.REFERENCIA || ''}
+                            onChange={(e) =>
+                              setFormData({ ...formData, REFERENCIA: e.target.value || null })
+                            }
+                            readOnly={(isGestionInventario && modalMode === 'edit') || (isExistingProduct && !!formData.PRODUCTO)}
+                            placeholder="Ej: B097-34-160"
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Estante
+                            <Tooltip content="Ubicación del estante" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.ESTANTE || ''}
+                            onChange={(e) =>
+                              setFormData({ ...formData, ESTANTE: e.target.value || null })
+                            }
+                            placeholder="Ej: A1, B2, C3"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Nivel
+                            <Tooltip content="Nivel en el estante" />
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.NIVEL || ''}
+                            onChange={(e) =>
+                              setFormData({ ...formData, NIVEL: e.target.value || null })
+                            }
+                            placeholder="Ej: 1, 2, 3"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {modalMode === 'create' && !isExistingProduct && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                              Stock Inicial *
+                              <Tooltip content="Cantidad inicial en inventario" />
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={formData.STOCK || 0}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  STOCK: parseInt(e.target.value) || 0,
+                                })
+                              }
+                              placeholder="Ej: 50"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección: Información de Proveedores */}
+                  {modalMode === 'create' && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-red-600">
+                        <div className="w-1 h-6 bg-red-600 rounded"></div>
+                        <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">
+                          Información de Proveedores
+                        </h3>
+                      </div>
+
+                      {/* Botón para abrir selector de proveedores */}
+                      <div className="flex justify-center mb-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProveedorSelector(true);
+                            // Cargar comparativas guardadas si el producto ya existe
+                            if (formData.CB) {
+                              cargarComparativaProveedores(String(formData.CB));
+                            }
+                          }}
+                          className="px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition font-medium text-sm"
+                        >
+                          Seleccionar proveedor del producto
+                        </button>
+                      </div>
+
+                      {/* Mostrar proveedor seleccionado */}
+                      {selectedProveedor && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Proveedor seleccionado:</p>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {availableProveedores.find(p => p.id_proveedor === selectedProveedor)?.nombre_proveedor}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProveedor(null)}
+                              className="text-red-600 hover:text-red-700 text-sm font-medium"
+                            >
+                              Cambiar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            N° Factura
+                          </label>
+                          <input
+                            type="text"
+                            value={proveedorData.nFactura || ''}
+                            onChange={(e) => setProveedorData({ ...proveedorData, nFactura: e.target.value })}
+                            placeholder="Ej: FAC-2024-001"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Fecha
+                          </label>
+                          <input
+                            type="date"
+                            value={proveedorData.fecha || ''}
+                            onChange={(e) => setProveedorData({ ...proveedorData, fecha: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Cantidad {isExistingProduct && '*'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={proveedorData.cantidad || ''}
+                            onChange={(e) => setProveedorData({ ...proveedorData, cantidad: parseInt(e.target.value) || 0 })}
+                            required={isExistingProduct}
+                            placeholder="Ej: 10"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Costo
+                            <Tooltip content="Costo de compra al proveedor" />
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={proveedorData.costo || ''}
+                            onChange={(e) => setProveedorData({ ...proveedorData, costo: parseFloat(e.target.value) || 0 })}
+                            placeholder="Ej: 15.00"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Valor Venta *
+                            <Tooltip content="Precio de venta al cliente" />
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            required
+                            value={formData.PRECIO || 0}
+                            readOnly={false}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                PRECIO: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="Ej: 25.50"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                          />
                         </div>
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
-                >
-                  {modalMode === 'create' 
-                    ? (isExistingProduct ? 'Agregar Stock' : 'Crear Producto')
-                    : 'Guardar Cambios'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setIsExistingProduct(false);
-                    setSearchCI('');
-                    setShowProveedorSelector(false);
-                    setSelectedProveedor(null);
-                    setProveedorData({
-                      nFactura: '',
-                      proveedor: '',
-                      fecha: '',
-                      cantidad: 0,
-                      costo: 0,
-                    });
-                  }}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div >
-      )
-      }
-
-      {/* Modal de Selector de Proveedores */}
-      {showProveedorSelector && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120]"
-          onClick={() => setShowProveedorSelector(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-white px-6 py-5 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Seleccionar proveedor del producto</h2>
-                <button
-                  onClick={() => {
-                    setShowProveedorSelector(false);
-                    resetProveedoresSelector();
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Columna Izquierda: Información del Producto + Información del Proveedor */}
-                <div className="space-y-6">
-                  {/* Información del Producto */}
-                  <div className="bg-gray-100 rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-gray-700 mb-4">
-                      Información del producto
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                  {/* Sección de edición: Entradas y Salidas */}
+                  {modalMode === 'edit' && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Ajuste de Stock</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            CB
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Cantidad Actual
+                            <Tooltip content="Stock actual en inventario (solo lectura)" />
                           </label>
-                          <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                            {formData.CB || '-'}
-                          </div>
+                          <input
+                            type="number"
+                            value={formData.STOCK || 0}
+                            readOnly
+                            className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 font-medium cursor-not-allowed"
+                          />
                         </div>
+
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            CI
-                          </label>
-                          <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                            {formData.CI || '-'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Producto
-                        </label>
-                        <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                          {formData.PRODUCTO || '-'}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Marca
-                          </label>
-                          <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                            {formData.MARCA || '-'}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Tipo / Modelo
-                          </label>
-                          <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                            {formData.TIPO || '-'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Referencia
-                        </label>
-                        <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
-                          {formData.REFERENCIA || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Información del Proveedor */}
-                  <div className="bg-gray-100 rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-gray-700 mb-4">
-                      Información del proveedor
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Nombre
-                        </label>
-                        <input
-                          type="text"
-                          value={proveedorData.proveedor || ''}
-                          onChange={(e) => setProveedorData({ ...proveedorData, proveedor: e.target.value })}
-                          placeholder="Nombre del proveedor"
-                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Precio
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={proveedorData.costo || ''}
-                          onChange={(e) => setProveedorData({ ...proveedorData, costo: parseFloat(e.target.value) || 0 })}
-                          placeholder="0.00"
-                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Columna Derecha: Lista de Proveedores */}
-                <div className="bg-gray-50 rounded-xl p-5">
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                    {/* Proveedor 1 */}
-                    <div className={`bg-white rounded-xl p-4 border-2 transition-all ${
-                      getCheapestProvider()?.key === 'proveedor1' && proveedor1.id
-                        ? 'border-green-500 shadow-lg'
-                        : 'border-red-500'
-                    }`}>
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          PROVEEDOR 1
-                        </span>
-                        {getCheapestProvider()?.key === 'proveedor1' && proveedor1.id && (
-                          <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                            ✓ MÁS BARATO
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 mb-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Nombre
-                          </label>
-                          <select
-                            value={proveedor1.id || ''}
-                            onChange={(e) => {
-                              const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                              const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
-                              setProveedor1({
-                                id: selectedId,
-                                nombre: selected?.nombre_proveedor || '',
-                                precio: proveedor1.precio,
-                              });
-                            }}
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                          >
-                            <option value="">Seleccionar proveedor</option>
-                            {availableProveedores.map((prov) => (
-                              <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                {prov.nombre_proveedor}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Precio
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Entradas (+)
+                            <Tooltip content="Cantidad a agregar al stock" />
                           </label>
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
-                            value={proveedor1.precio}
-                            onChange={(e) => setProveedor1({ ...proveedor1, precio: parseFloat(e.target.value) || 0 })}
-                            placeholder="0.00"
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                            value={entradaStock || 0}
+                            onChange={(e) => setEntradaStock(parseInt(e.target.value) || 0)}
+                            placeholder="Ej: 10"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
                           />
                         </div>
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleSelectProveedorWithPrice('proveedor1')}
-                        disabled={!proveedor1.id}
-                        className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${
-                          selectedProveedor === proveedor1.id
-                            ? 'bg-green-500 text-white'
-                            : proveedor1.id
-                            ? 'bg-black text-white hover:bg-gray-800'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {selectedProveedor === proveedor1.id ? '✓ Seleccionado' : 'Seleccionar'}
-                      </button>
-                    </div>
-
-                    {/* Proveedor 2 */}
-                    <div className={`bg-white rounded-xl p-4 border-2 transition-all ${
-                      getCheapestProvider()?.key === 'proveedor2' && proveedor2.id
-                        ? 'border-green-500 shadow-lg'
-                        : 'border-red-500'
-                    }`}>
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          PROVEEDOR 2
-                        </span>
-                        {getCheapestProvider()?.key === 'proveedor2' && proveedor2.id && (
-                          <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                            ✓ MÁS BARATO
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 mb-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Nombre
-                          </label>
-                          <select
-                            value={proveedor2.id || ''}
-                            onChange={(e) => {
-                              const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                              const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
-                              setProveedor2({
-                                id: selectedId,
-                                nombre: selected?.nombre_proveedor || '',
-                                precio: proveedor2.precio,
-                              });
-                            }}
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                          >
-                            <option value="">Seleccionar proveedor</option>
-                            {availableProveedores.map((prov) => (
-                              <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                {prov.nombre_proveedor}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Precio
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            Salidas (-)
+                            <Tooltip content="Cantidad a quitar del stock" />
                           </label>
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
-                            value={proveedor2.precio}
-                            onChange={(e) => setProveedor2({ ...proveedor2, precio: parseFloat(e.target.value) || 0 })}
-                            placeholder="0.00"
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                            value={salidaStock || 0}
+                            onChange={(e) => setSalidaStock(parseInt(e.target.value) || 0)}
+                            placeholder="Ej: 5"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
                           />
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleSelectProveedorWithPrice('proveedor2')}
-                        disabled={!proveedor2.id}
-                        className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${
-                          selectedProveedor === proveedor2.id
-                            ? 'bg-green-500 text-white'
-                            : proveedor2.id
-                            ? 'bg-black text-white hover:bg-gray-800'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {selectedProveedor === proveedor2.id ? '✓ Seleccionado' : 'Seleccionar'}
-                      </button>
-                    </div>
-
-                    {/* Proveedor 3 */}
-                    <div className={`bg-white rounded-xl p-4 border-2 transition-all ${
-                      getCheapestProvider()?.key === 'proveedor3' && proveedor3.id
-                        ? 'border-green-500 shadow-lg'
-                        : 'border-red-500'
-                    }`}>
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          PROVEEDOR 3
-                        </span>
-                        {getCheapestProvider()?.key === 'proveedor3' && proveedor3.id && (
-                          <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                            ✓ MÁS BARATO
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 mb-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Nombre
-                          </label>
-                          <select
-                            value={proveedor3.id || ''}
-                            onChange={(e) => {
-                              const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                              const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
-                              setProveedor3({
-                                id: selectedId,
-                                nombre: selected?.nombre_proveedor || '',
-                                precio: proveedor3.precio,
-                              });
-                            }}
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                          >
-                            <option value="">Seleccionar proveedor</option>
-                            {availableProveedores.map((prov) => (
-                              <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                {prov.nombre_proveedor}
-                              </option>
-                            ))}
-                          </select>
+                      {(entradaStock > 0 || salidaStock > 0) && (
+                        <div className="mt-4 p-3 bg-white border border-blue-300 rounded-lg">
+                          <div className="text-sm text-blue-900">
+                            <div className="font-medium mb-2">Resumen del ajuste:</div>
+                            <div className="space-y-1">
+                              <div>Stock actual: <span className="font-bold">{typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK}</span></div>
+                              {entradaStock > 0 && <div className="text-green-700">+ Entradas: {entradaStock}</div>}
+                              {salidaStock > 0 && <div className="text-red-700">- Salidas: {salidaStock}</div>}
+                              <div className="pt-2 border-t border-blue-300">
+                                Nuevo stock: <span className="font-bold text-lg">{(typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK) + entradaStock - salidaStock}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Precio
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={proveedor3.precio}
-                            onChange={(e) => setProveedor3({ ...proveedor3, precio: parseFloat(e.target.value) || 0 })}
-                            placeholder="0.00"
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleSelectProveedorWithPrice('proveedor3')}
-                        disabled={!proveedor3.id}
-                        className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${
-                          selectedProveedor === proveedor3.id
-                            ? 'bg-green-500 text-white'
-                            : proveedor3.id
-                            ? 'bg-black text-white hover:bg-gray-800'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {selectedProveedor === proveedor3.id ? '✓ Seleccionado' : 'Seleccionar'}
-                      </button>
+                      )}
                     </div>
+                  )}
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
+                    >
+                      {modalMode === 'create'
+                        ? (isExistingProduct ? 'Agregar Stock' : 'Crear Producto')
+                        : 'Guardar Cambios'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false);
+                        setIsExistingProduct(false);
+                        setSearchCI('');
+                        setShowProveedorSelector(false);
+                        setSelectedProveedor(null);
+                        setProveedorData({
+                          nFactura: '',
+                          proveedor: '',
+                          fecha: '',
+                          cantidad: 0,
+                          costo: 0,
+                        });
+                      }}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
+                    >
+                      Cancelar
+                    </button>
                   </div>
-                </div>
+                </form>
               </div>
-            </div>
+            </div >
+          )
+          }
 
-            {/* Footer con botones */}
-            <div className="border-t border-gray-200 px-6 py-4 bg-white flex items-center justify-between">
-              <button
-                type="button"
-                onClick={async () => {
-                  // Verificar si hay al menos un proveedor configurado
-                  const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
-                  
-                  if (!hayProveedores) {
-                    alert('Por favor configura al menos un proveedor');
-                    return;
-                  }
-
-                  // Guardar en BD si el producto ya existe (modo edición o producto existente)
-                  if (formData.CB && (modalMode === 'edit' || isExistingProduct)) {
-                    try {
-                      await guardarComparativaProveedores(String(formData.CB));
-                      alert('Comparativas guardadas correctamente');
-                      setShowProveedorSelector(false);
-                    } catch (error) {
-                      console.error('Error al guardar comparativas:', error);
-                      alert('Error al guardar las comparativas de proveedores');
-                    }
-                  } else {
-                    // Para productos nuevos, solo cerrar el modal
-                    // Las comparativas se guardarán cuando se cree el producto
-                    setShowProveedorSelector(false);
-                  }
-                }}
-                className="px-8 py-2.5 bg-black text-white rounded-full hover:bg-gray-800 transition font-medium text-sm"
-              >
-                {(modalMode === 'edit' || isExistingProduct) ? 'Guardar y Cerrar' : 'Cerrar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProveedorSelector(false);
-                }}
-                className="px-8 py-2.5 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition font-medium text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* Diálogo de selección de tipo de producto */}
-      {showProductTypeDialog && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-in fade-in duration-200"
-          onClick={() => setShowProductTypeDialog(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="px-8 pt-8 pb-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  Agregar Producto
-                </h3>
-                <button
-                  onClick={() => setShowProductTypeDialog(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <p className="text-gray-600 text-sm mt-2">
-                Selecciona el tipo de producto que deseas agregar
-              </p>
-            </div>
-
-            {/* Opciones */}
-            <div className="p-8 space-y-4">
-              {/* Producto Nuevo */}
-              <button
-                onClick={handleNewProduct}
-                className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:bg-gray-50 transition-all duration-200 text-left group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                    <Plus className="w-6 h-6 text-green-700" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">
-                      Producto Nuevo
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      Crear un producto completamente nuevo con códigos automáticos
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Producto Existente */}
-              <button
-                onClick={handleExistingProduct}
-                className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:bg-gray-50 transition-all duration-200 text-left group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <Search className="w-6 h-6 text-blue-700" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">
-                      Producto Existente
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      Agregar stock a un producto que ya existe en el inventario
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {/* Footer */}
-            <div className="px-8 pb-8">
-              <button
-                onClick={() => setShowProductTypeDialog(false)}
-                className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Diálogo de confirmación de eliminación */}
-      {
-        showDeleteDialog && (
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-in fade-in duration-200"
-            onClick={cancelDelete}
-          >
+          {/* Modal de Selector de Proveedores */}
+          {showProveedorSelector && (
             <div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120]"
+              onClick={() => setShowProveedorSelector(false)}
             >
-              {/* Icono de advertencia */}
-              <div className="flex justify-center pt-8 pb-4">
-                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-                  <Trash2 className="w-8 h-8 text-red-600" />
+              <div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="bg-white px-6 py-5 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900">Seleccionar proveedor del producto</h2>
+                    <button
+                      onClick={() => {
+                        setShowProveedorSelector(false);
+                        resetProveedoresSelector();
+                      }}
+                      className="text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Columna Izquierda: Información del Producto + Información del Proveedor */}
+                    <div className="space-y-6">
+                      {/* Información del Producto */}
+                      <div className="bg-gray-100 rounded-xl p-5">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4">
+                          Información del producto
+                        </h3>
+
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                CB
+                              </label>
+                              <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                                {formData.CB || '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                CI
+                              </label>
+                              <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                                {formData.CI || '-'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Producto
+                            </label>
+                            <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                              {formData.PRODUCTO || '-'}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Marca
+                              </label>
+                              <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                                {formData.MARCA || '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Tipo / Modelo
+                              </label>
+                              <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                                {formData.TIPO || '-'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Referencia
+                            </label>
+                            <div className="bg-white px-3 py-2 rounded-lg text-sm text-gray-900">
+                              {formData.REFERENCIA || '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Información del Proveedor */}
+                      <div className="bg-gray-100 rounded-xl p-5">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4">
+                          Información del proveedor
+                        </h3>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Nombre
+                            </label>
+                            <input
+                              type="text"
+                              value={proveedorData.proveedor || ''}
+                              onChange={(e) => setProveedorData({ ...proveedorData, proveedor: e.target.value })}
+                              placeholder="Nombre del proveedor"
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Precio
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={proveedorData.costo || ''}
+                              onChange={(e) => setProveedorData({ ...proveedorData, costo: parseFloat(e.target.value) || 0 })}
+                              placeholder="0.00"
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Columna Derecha: Lista de Proveedores */}
+                    <div className="bg-gray-50 rounded-xl p-5">
+                      <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                        {/* Proveedor 1 */}
+                        <div className={`bg-white rounded-xl p-4 border-2 transition-all ${getCheapestProvider()?.key === 'proveedor1' && proveedor1.id
+                          ? 'border-green-500 shadow-lg'
+                          : 'border-red-500'
+                          }`}>
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              PROVEEDOR 1
+                            </span>
+                            {getCheapestProvider()?.key === 'proveedor1' && proveedor1.id && (
+                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                ✓ MÁS BARATO
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Nombre
+                              </label>
+                              <select
+                                value={proveedor1.id || ''}
+                                onChange={(e) => {
+                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
+                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                                  setProveedor1({
+                                    id: selectedId,
+                                    nombre: selected?.nombre_proveedor || '',
+                                    precio: proveedor1.precio,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              >
+                                <option value="">Seleccionar proveedor</option>
+                                {availableProveedores.map((prov) => (
+                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
+                                    {prov.nombre_proveedor}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Precio
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={proveedor1.precio}
+                                onChange={(e) => setProveedor1({ ...proveedor1, precio: parseFloat(e.target.value) || 0 })}
+                                placeholder="0.00"
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSelectProveedorWithPrice('proveedor1')}
+                            disabled={!proveedor1.id}
+                            className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${selectedProveedor === proveedor1.id
+                              ? 'bg-green-500 text-white'
+                              : proveedor1.id
+                                ? 'bg-black text-white hover:bg-gray-800'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                          >
+                            {selectedProveedor === proveedor1.id ? '✓ Seleccionado' : 'Seleccionar'}
+                          </button>
+                        </div>
+
+                        {/* Proveedor 2 */}
+                        <div className={`bg-white rounded-xl p-4 border-2 transition-all ${getCheapestProvider()?.key === 'proveedor2' && proveedor2.id
+                          ? 'border-green-500 shadow-lg'
+                          : 'border-red-500'
+                          }`}>
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              PROVEEDOR 2
+                            </span>
+                            {getCheapestProvider()?.key === 'proveedor2' && proveedor2.id && (
+                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                ✓ MÁS BARATO
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Nombre
+                              </label>
+                              <select
+                                value={proveedor2.id || ''}
+                                onChange={(e) => {
+                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
+                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                                  setProveedor2({
+                                    id: selectedId,
+                                    nombre: selected?.nombre_proveedor || '',
+                                    precio: proveedor2.precio,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              >
+                                <option value="">Seleccionar proveedor</option>
+                                {availableProveedores.map((prov) => (
+                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
+                                    {prov.nombre_proveedor}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Precio
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={proveedor2.precio}
+                                onChange={(e) => setProveedor2({ ...proveedor2, precio: parseFloat(e.target.value) || 0 })}
+                                placeholder="0.00"
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSelectProveedorWithPrice('proveedor2')}
+                            disabled={!proveedor2.id}
+                            className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${selectedProveedor === proveedor2.id
+                              ? 'bg-green-500 text-white'
+                              : proveedor2.id
+                                ? 'bg-black text-white hover:bg-gray-800'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                          >
+                            {selectedProveedor === proveedor2.id ? '✓ Seleccionado' : 'Seleccionar'}
+                          </button>
+                        </div>
+
+                        {/* Proveedor 3 */}
+                        <div className={`bg-white rounded-xl p-4 border-2 transition-all ${getCheapestProvider()?.key === 'proveedor3' && proveedor3.id
+                          ? 'border-green-500 shadow-lg'
+                          : 'border-red-500'
+                          }`}>
+                          <div className="mb-3 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              PROVEEDOR 3
+                            </span>
+                            {getCheapestProvider()?.key === 'proveedor3' && proveedor3.id && (
+                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                ✓ MÁS BARATO
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 mb-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Nombre
+                              </label>
+                              <select
+                                value={proveedor3.id || ''}
+                                onChange={(e) => {
+                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
+                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                                  setProveedor3({
+                                    id: selectedId,
+                                    nombre: selected?.nombre_proveedor || '',
+                                    precio: proveedor3.precio,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              >
+                                <option value="">Seleccionar proveedor</option>
+                                {availableProveedores.map((prov) => (
+                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
+                                    {prov.nombre_proveedor}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                Precio
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={proveedor3.precio}
+                                onChange={(e) => setProveedor3({ ...proveedor3, precio: parseFloat(e.target.value) || 0 })}
+                                placeholder="0.00"
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSelectProveedorWithPrice('proveedor3')}
+                            disabled={!proveedor3.id}
+                            className={`w-full py-2 px-4 rounded-full font-medium text-sm transition-all ${selectedProveedor === proveedor3.id
+                              ? 'bg-green-500 text-white'
+                              : proveedor3.id
+                                ? 'bg-black text-white hover:bg-gray-800'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                          >
+                            {selectedProveedor === proveedor3.id ? '✓ Seleccionado' : 'Seleccionar'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer con botones */}
+                <div className="border-t border-gray-200 px-6 py-4 bg-white flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Verificar si hay al menos un proveedor configurado
+                      const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
+
+                      if (!hayProveedores) {
+                        alert('Por favor configura al menos un proveedor');
+                        return;
+                      }
+
+                      // Guardar en BD si el producto ya existe (modo edición o producto existente)
+                      if (formData.CB && (modalMode === 'edit' || isExistingProduct)) {
+                        try {
+                          await guardarComparativaProveedores(String(formData.CB));
+                          alert('Comparativas guardadas correctamente');
+                          setShowProveedorSelector(false);
+                        } catch (error) {
+                          console.error('Error al guardar comparativas:', error);
+                          alert('Error al guardar las comparativas de proveedores');
+                        }
+                      } else {
+                        // Para productos nuevos, solo cerrar el modal
+                        // Las comparativas se guardarán cuando se cree el producto
+                        setShowProveedorSelector(false);
+                      }
+                    }}
+                    className="px-8 py-2.5 bg-black text-white rounded-full hover:bg-gray-800 transition font-medium text-sm"
+                  >
+                    {(modalMode === 'edit' || isExistingProduct) ? 'Guardar y Cerrar' : 'Cerrar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProveedorSelector(false);
+                    }}
+                    className="px-8 py-2.5 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition font-medium text-sm"
+                  >
+                    Cancelar
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Contenido */}
-              <div className="px-8 pb-6 text-center">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Eliminar producto
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  ¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.
-                </p>
-              </div>
 
-              {/* Botones */}
-              <div className="flex gap-3 px-6 pb-6">
-                <button
-                  onClick={cancelDelete}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-200"
-                >
-                  Eliminar
-                </button>
+          {/* Diálogo de selección de tipo de producto */}
+          {showProductTypeDialog && (
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-in fade-in duration-200"
+              onClick={() => setShowProductTypeDialog(false)}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all animate-in zoom-in-95 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="px-8 pt-8 pb-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Agregar Producto
+                    </h3>
+                    <button
+                      onClick={() => setShowProductTypeDialog(false)}
+                      className="text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <p className="text-gray-600 text-sm mt-2">
+                    Selecciona el tipo de producto que deseas agregar
+                  </p>
+                </div>
+
+                {/* Opciones */}
+                <div className="p-8 space-y-4">
+                  {/* Producto Nuevo */}
+                  <button
+                    onClick={handleNewProduct}
+                    className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:bg-gray-50 transition-all duration-200 text-left group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                        <Plus className="w-6 h-6 text-green-700" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-1">
+                          Producto Nuevo
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          Crear un producto completamente nuevo con códigos automáticos
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Producto Existente */}
+                  <button
+                    onClick={handleExistingProduct}
+                    className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:bg-gray-50 transition-all duration-200 text-left group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                        <Search className="w-6 h-6 text-blue-700" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-1">
+                          Producto Existente
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          Agregar stock a un producto que ya existe en el inventario
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Footer */}
+                <div className="px-8 pb-8">
+                  <button
+                    onClick={() => setShowProductTypeDialog(false)}
+                    className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )
-      }
+          )}
+
+          {/* Diálogo de confirmación de eliminación */}
+          {
+            showDeleteDialog && (
+              <div
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-in fade-in duration-200"
+                onClick={cancelDelete}
+              >
+                <div
+                  className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-in zoom-in-95 duration-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Icono de advertencia */}
+                  <div className="flex justify-center pt-8 pb-4">
+                    <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+                      <Trash2 className="w-8 h-8 text-red-600" />
+                    </div>
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="px-8 pb-6 text-center">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      Eliminar producto
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      ¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.
+                    </p>
+                  </div>
+
+                  {/* Botones */}
+                  <div className="flex gap-3 px-6 pb-6">
+                    <button
+                      onClick={cancelDelete}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={confirmDelete}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-200"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
         </>
       )}
 
