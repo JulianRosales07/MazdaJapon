@@ -72,7 +72,7 @@ export default function Entradas() {
 
   const getNextFacturaNumber = (): string => {
     if (entradas.length === 0) return 'F-00001';
-    
+
     // Extraer números de las facturas existentes
     const numeros = entradas
       .map(e => {
@@ -81,9 +81,9 @@ export default function Entradas() {
         return match ? parseInt(match[0]) : 0;
       })
       .filter(num => num > 0);
-    
+
     if (numeros.length === 0) return 'F-00001';
-    
+
     const maxNum = Math.max(...numeros);
     return `F-${String(maxNum + 1).padStart(5, '0')}`;
   };
@@ -109,9 +109,9 @@ export default function Entradas() {
 
     // Combinar ambos arrays y obtener el máximo
     const todosCIs = [...cisEntradas, ...cisProductos];
-    
+
     if (todosCIs.length === 0) return '100001';
-    
+
     const maxCI = Math.max(...todosCIs);
     return String(maxCI + 1);
   };
@@ -119,7 +119,7 @@ export default function Entradas() {
   const handleOpenModal = () => {
     const nextFactura = getNextFacturaNumber();
     const nextCI = getNextCI();
-    
+
     setFormData({
       N_FACTURA: nextFactura,
       PROVEEDOR: '',
@@ -266,7 +266,7 @@ export default function Entradas() {
                 <option value={100}>100</option>
               </select>
             </div>
-            {isAdmin && (
+            {/*            {isAdmin && (
               <>
                 <button
                   onClick={() => setShowDevolucionModal(true)}
@@ -283,7 +283,7 @@ export default function Entradas() {
                   Nueva Entrada
                 </button>
               </>
-            )}
+            )} */}
           </div>
 
           <div className="flex flex-col md:flex-row gap-4">
@@ -429,8 +429,8 @@ export default function Entradas() {
                         <button
                           onClick={() => setCurrentPage(page)}
                           className={`min-w-[32px] h-8 text-sm rounded transition ${currentPage === page
-                              ? 'bg-gray-900 text-white font-medium'
-                              : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-gray-900 text-white font-medium'
+                            : 'text-gray-700 hover:bg-gray-100'
                             }`}
                         >
                           {page}
@@ -686,7 +686,7 @@ export default function Entradas() {
                 if (producto) {
                   const stockActual = parseFloat(String(producto.STOCK)) || 0;
                   const cantidadDevolucion = Math.abs(devolucionData.cantidad);
-                  
+
                   if (stockActual < cantidadDevolucion) {
                     alert(`Stock insuficiente para devolución. Stock actual: ${stockActual}, Cantidad a devolver: ${cantidadDevolucion}`);
                     return;
@@ -715,12 +715,12 @@ export default function Entradas() {
                   const stockActual = parseFloat(String(producto.STOCK)) || 0;
                   const cantidadDevolucion = Math.abs(devolucionData.cantidad);
                   const nuevoStock = stockActual - cantidadDevolucion;
-                  
+
                   await repuestosAPI.update(String(producto.CB), {
                     ...producto,
                     STOCK: nuevoStock
                   });
-                  
+
                   // Recargar productos para reflejar el cambio
                   await fetchProductos();
                 }
