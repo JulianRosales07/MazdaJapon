@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import logo from '../assets/image.png';
 
 interface DashboardProps {
-  onNavigate?: (page: 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'devoluciones' | 'configuracion' | 'exportar') => void;
+  onNavigate?: (page: 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'configuracion' | 'exportar') => void;
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {

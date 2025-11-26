@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Home, Package, LogOut, User, Settings, Bell, ArrowDownToLine, ArrowUpFromLine, RotateCcw, FileSpreadsheet, Tag, Building2, BarChart3, PanelLeft } from 'lucide-react';
+import { Home, Package, LogOut, User, Settings, Bell, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Tag, Building2, BarChart3, PanelLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LOGO from '../assets/mazda.png';
 
-type Page = 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'devoluciones' | 'configuracion' | 'exportar' | 'marcas' | 'proveedores' | 'notificaciones' | 'perfil' | 'comparativa';
+type Page = 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'configuracion' | 'exportar' | 'marcas' | 'proveedores' | 'notificaciones' | 'perfil' | 'comparativa';
 
 type SidebarProps = {
   currentPage: Page;
@@ -88,18 +88,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           </button>
         )}
 
-        {isAdmin && (
-          <button
-            onClick={() => onNavigate('devoluciones')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'devoluciones'
-              ? 'bg-white text-gray-900'
-              : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            title="Devoluciones"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
-        )}
+
 
         {permisos.puedeVerMarcas && (
           <button
@@ -247,18 +236,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </button>
             )}
 
-            {isAdmin && (
-              <button
-                onClick={() => onNavigate('devoluciones')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'devoluciones'
-                  ? 'bg-gray-100 text-gray-900 font-medium'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Devoluciones</span>
-              </button>
-            )}
+
           </div>
 
           {/* Sección de Catálogos */}

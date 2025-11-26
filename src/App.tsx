@@ -6,7 +6,6 @@ import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Entradas from './components/Entradas';
 import Salidas from './components/Salidas';
-import Devoluciones from './components/Devoluciones';
 import Configuracion from './components/Configuracion';
 import Exportar from './components/Exportar';
 import Marcas from './components/Marcas';
@@ -15,7 +14,7 @@ import Notificaciones from './components/Notificaciones';
 import Perfil from './components/Perfil';
 import ComparativaProveedores from './components/ComparativaProveedores';
 
-type Page = 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'devoluciones' | 'configuracion' | 'exportar' | 'marcas' | 'proveedores' | 'notificaciones' | 'perfil' | 'comparativa';
+type Page = 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'configuracion' | 'exportar' | 'marcas' | 'proveedores' | 'notificaciones' | 'perfil' | 'comparativa';
 
 function AppContent() {
   const { usuario, loading } = useAuth();
@@ -43,8 +42,6 @@ function AppContent() {
         return <Entradas />;
       case 'salidas':
         return <Salidas />;
-      case 'devoluciones':
-        return <Devoluciones />;
       case 'configuracion':
         return <Configuracion />;
       case 'exportar':
