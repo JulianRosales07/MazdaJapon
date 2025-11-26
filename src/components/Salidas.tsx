@@ -20,7 +20,9 @@ export default function Salidas() {
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // Filtro por mes (formato: YYYYMM)
   const [showDevolucionModal, setShowDevolucionModal] = useState(false);
   const [devolucionData, setDevolucionData] = useState({
-    n_factura: 0,
+    cb: '',
+    ci: '',
+    producto_nombre: '',
     cantidad: 0,
     motivo: '',
     observaciones: '',
@@ -88,9 +90,9 @@ export default function Salidas() {
 
     // Combinar ambos arrays y obtener el máximo
     const todosCIs = [...cisSalidas, ...cisProductos];
-    
+
     if (todosCIs.length === 0) return 100001;
-    
+
     return Math.max(...todosCIs) + 1;
   };
 
@@ -110,9 +112,9 @@ export default function Salidas() {
 
     // Combinar ambos arrays y obtener el máximo
     const todosCBs = [...cbsSalidas, ...cbsProductos];
-    
+
     if (todosCBs.length === 0) return 100001;
-    
+
     return Math.max(...todosCBs) + 1;
   };
 
@@ -124,7 +126,7 @@ export default function Salidas() {
     const facturasValidas = salidas
       .map(s => s.n_factura || 0)
       .filter(num => num > 0 && num < 100000);
-    
+
     const maxFactura = facturasValidas.length > 0
       ? Math.max(...facturasValidas)
       : 0;
@@ -152,7 +154,7 @@ export default function Salidas() {
     setFormData({
       n_factura: salida.n_factura,
       fecha: salida.fecha,
-      cb: salida.cb,
+      cb: salida.cb || 0,
       ci: salida.ci || 0,
       descripcion: salida.descripcion,
       valor: salida.valor,
@@ -191,27 +193,27 @@ export default function Salidas() {
       if (modalMode === 'create') {
         // Buscar el producto en el inventario por CB
         const producto = productos.find(p => String(p.CB) === String(formData.cb));
-        
+
         if (producto) {
           // Verificar que hay suficiente stock
           const stockActual = parseFloat(String(producto.STOCK)) || 0;
           const cantidadSalida = Math.abs(formData.cantidad);
-          
+
           if (stockActual < cantidadSalida) {
             alert(`Stock insuficiente. Stock actual: ${stockActual}, Cantidad solicitada: ${cantidadSalida}`);
             return;
           }
-          
+
           // Crear la salida
           await salidasAPI.create(formData);
-          
+
           // Actualizar el stock del producto (restar la cantidad)
           const nuevoStock = stockActual - cantidadSalida;
           await repuestosAPI.update(String(producto.CB), {
             ...producto,
             STOCK: nuevoStock
           });
-          
+
           // Recargar productos para reflejar el cambio
           await fetchProductos();
         } else {
@@ -516,7 +518,7 @@ export default function Salidas() {
                                 onClick={() => handleEdit(salida)}
                                 className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
                               >
-                              <Eye className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(salida.n_factura)}
@@ -636,48 +638,37 @@ export default function Salidas() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
-                // Buscar la salida original
-                const salidaOriginal = salidas.find(s => s.n_factura === devolucionData.n_factura);
-                if (!salidaOriginal) {
-                  alert('No se encontró la factura especificada');
+                if (!devolucionData.cb) {
+                  alert('Por favor selecciona un producto');
                   return;
                 }
 
-                // Buscar el producto en el inventario por CB
-                const producto = productos.find(p => String(p.CB) === String(salidaOriginal.cb));
+                const producto = productos.find(p => String(p.CB) === String(devolucionData.cb));
 
-                // Crear una nueva entrada (devolución) con cantidad negativa para restar
+                if (!producto) {
+                  alert('Producto no encontrado');
+                  return;
+                }
+
+                const ciValue = parseInt(String(devolucionData.ci));
+                const cbValue = parseInt(String(devolucionData.cb));
                 const nuevaSalida = {
                   n_factura: Math.max(...salidas.map(s => s.n_factura || 0)) + 1,
                   fecha: parseInt(new Date().toISOString().slice(0, 10).replace(/-/g, '')),
-                  cb: salidaOriginal.cb,
-                  ci: salidaOriginal.ci,
-                  descripcion: `DEVOLUCIÓN - ${salidaOriginal.descripcion}`,
-                  valor: salidaOriginal.valor,
-                  cantidad: -Math.abs(devolucionData.cantidad), // Negativo para indicar devolución
+                  cb: !isNaN(cbValue) ? cbValue : null,
+                  ci: !isNaN(ciValue) && ciValue > 0 ? ciValue : undefined,
+                  descripcion: `DEVOLUCIÓN - ${devolucionData.producto_nombre}`,
+                  valor: parseFloat(String(producto.PRECIO)) || 0,
+                  cantidad: -Math.abs(devolucionData.cantidad),
                   columna1: `Motivo: ${devolucionData.motivo}. ${devolucionData.observaciones}`,
                 };
 
                 await salidasAPI.create(nuevaSalida);
-
-                // Si existe el producto, actualizar el stock (sumar la cantidad devuelta)
-                if (producto) {
-                  const stockActual = parseFloat(String(producto.STOCK)) || 0;
-                  const cantidadDevuelta = Math.abs(devolucionData.cantidad);
-                  const nuevoStock = stockActual + cantidadDevuelta;
-                  
-                  await repuestosAPI.update(String(producto.CB), {
-                    ...producto,
-                    STOCK: nuevoStock
-                  });
-                  
-                  // Recargar productos para reflejar el cambio
-                  await fetchProductos();
-                }
-
                 await fetchSalidas();
+                await fetchProductos();
+
                 setShowDevolucionModal(false);
-                setDevolucionData({ n_factura: 0, cantidad: 0, motivo: '', observaciones: '' });
+                setDevolucionData({ cb: '', ci: '', producto_nombre: '', cantidad: 0, motivo: '', observaciones: '' });
                 alert('Devolución registrada exitosamente');
               } catch (error) {
                 console.error('Error al registrar devolución:', error);
@@ -685,18 +676,66 @@ export default function Salidas() {
               }
             }} className="p-6">
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    N° Factura Original *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={devolucionData.n_factura || ''}
-                    onChange={(e) => setDevolucionData({ ...devolucionData, n_factura: parseInt(e.target.value) || 0 })}
-                    placeholder="Ingresa el número de factura"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CI *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={devolucionData.ci}
+                      onChange={(e) => {
+                        const ci = e.target.value;
+                        const producto = productos.find(p => String(p.CI) === ci);
+                        setDevolucionData({
+                          ...devolucionData,
+                          ci: ci,
+                          cb: producto ? String(producto.CB) : '',
+                          producto_nombre: producto ? producto.PRODUCTO : ''
+                        });
+                      }}
+                      placeholder="Buscar por CI"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Producto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={devolucionData.producto_nombre}
+                      onChange={(e) => {
+                        setDevolucionData({
+                          ...devolucionData,
+                          producto_nombre: e.target.value
+                        });
+                      }}
+                      onBlur={() => {
+                        if (!devolucionData.cb && devolucionData.producto_nombre) {
+                          const producto = productos.find(p => p.PRODUCTO.toLowerCase() === devolucionData.producto_nombre.toLowerCase());
+                          if (producto) {
+                            setDevolucionData(prev => ({
+                              ...prev,
+                              cb: String(producto.CB),
+                              ci: String(producto.CI || ''),
+                              producto_nombre: producto.PRODUCTO
+                            }));
+                          }
+                        }
+                      }}
+                      list="productos-devolucion-list"
+                      placeholder="Buscar por nombre"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                    />
+                    <datalist id="productos-devolucion-list">
+                      {productos.map(p => (
+                        <option key={p.CB} value={p.PRODUCTO} />
+                      ))}
+                    </datalist>
+                  </div>
                 </div>
 
                 <div>
@@ -842,7 +881,7 @@ export default function Salidas() {
                     required
                     value={formData.fecha ? new Date(formData.fecha.toString().slice(0, 4) + '-' + formData.fecha.toString().slice(4, 6) + '-' + formData.fecha.toString().slice(6, 8)).toISOString().split('T')[0] : ''}
                     onChange={(e) => {
-                      const dateStr = e.target.value.replace(/-/g, ''); 
+                      const dateStr = e.target.value.replace(/-/g, '');
                       setFormData({ ...formData, fecha: parseInt(dateStr) });
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
@@ -859,7 +898,7 @@ export default function Salidas() {
                     value={formData.ci || ''}
                     onChange={(e) => {
                       const ciValue = parseInt(e.target.value) || 0;
-                      
+
                       // Buscar producto por CI
                       const productoEncontrado = productos.find(p => {
                         const productCI = parseInt(String(p.CI));
@@ -894,7 +933,7 @@ export default function Salidas() {
                     value={formData.cb || ''}
                     onChange={(e) => {
                       const cbValue = parseInt(e.target.value) || 0;
-                      
+
                       // Buscar producto por CB
                       const productoEncontrado = productos.find(p => String(p.CB) === String(cbValue));
 
@@ -961,16 +1000,16 @@ export default function Salidas() {
 
                 {/* Información del Producto Encontrado */}
                 {!isVentaExterna && (formData.cb > 0 || formData.ci > 0) && (() => {
-                  const productoEncontrado = productos.find(p => 
-                    String(p.CB) === String(formData.cb) || 
+                  const productoEncontrado = productos.find(p =>
+                    String(p.CB) === String(formData.cb) ||
                     (formData.ci > 0 && parseInt(String(p.CI)) === formData.ci)
                   );
                   return productoEncontrado ? (
                     <div className="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4 mb-2">
                       <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
+                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                         </svg>
                         Información del Producto
                       </h3>

@@ -507,9 +507,11 @@ export default function Inventory() {
     try {
       // Calcular el nuevo stock
       const stockActual = typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK;
-      const cantidadAgregar = isExistingProduct ? proveedorData.cantidad : (modalMode === 'edit' ? entradaStock : 0);
+
+      // FIX: Para productos existentes, mantenemos el stock actual y dejamos que el trigger 'trigger_actualizar_stock_entrada'
+      // sume la cantidad automáticamente al crear la entrada.
       const nuevoStock = isExistingProduct
-        ? stockActual + cantidadAgregar
+        ? stockActual
         : (modalMode === 'edit' ? stockActual + entradaStock - salidaStock : stockActual);
 
       const dataToSave = {
@@ -1496,20 +1498,22 @@ export default function Inventory() {
                           />
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cantidad {isExistingProduct && '*'}
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={proveedorData.cantidad || ''}
-                            onChange={(e) => setProveedorData({ ...proveedorData, cantidad: parseInt(e.target.value) || 0 })}
-                            required={isExistingProduct}
-                            placeholder="Ej: 10"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                          />
-                        </div>
+                        {isExistingProduct && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Cantidad *
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={proveedorData.cantidad || ''}
+                              onChange={(e) => setProveedorData({ ...proveedorData, cantidad: parseInt(e.target.value) || 0 })}
+                              required
+                              placeholder="Ej: 10"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
+                            />
+                          </div>
+                        )}
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">

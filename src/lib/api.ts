@@ -45,7 +45,7 @@ export type Entrada = {
 export type Salida = {
     n_factura: number;
     fecha: number;
-    cb: number;
+    cb: number | null;
     ci?: number;
     descripcion: string;
     valor: number;
@@ -86,7 +86,7 @@ export const usuariosAPI = {
         // Hashear la contraseña antes de guardar
         const bcrypt = await import('bcryptjs');
         const hashedPassword = await bcrypt.hash(userData.password, 10);
-        
+
         const { data, error } = await supabase
             .from('usuarios')
             .insert([{
@@ -118,7 +118,7 @@ export const usuariosAPI = {
         // Hashear la nueva contraseña con bcrypt
         const bcrypt = await import('bcryptjs');
         const hashedPassword = await bcrypt.hash(password, 10);
-        
+
         const { error } = await supabase
             .from('usuarios')
             .update({ password: hashedPassword })
@@ -138,7 +138,7 @@ export const usuariosAPI = {
 
     async login(username: string, password: string): Promise<{ usuario: Usuario; token?: string }> {
         const bcrypt = await import('bcryptjs');
-        
+
         const { data, error } = await supabase
             .from('usuarios')
             .select('*, password')
@@ -151,7 +151,7 @@ export const usuariosAPI = {
 
         // Validar contraseña (soporta bcrypt y texto plano)
         let isValidPassword = false;
-        
+
         if (data.password.startsWith('$2a$') || data.password.startsWith('$2b$')) {
             // Contraseña hasheada con bcrypt
             isValidPassword = await bcrypt.compare(password, data.password);
@@ -173,7 +173,7 @@ export const usuariosAPI = {
 // Helper para convertir nombres de columnas
 const mapRepuestoToDb = (repuesto: Partial<Repuesto>) => {
     const mapped: any = {};
-    
+
     if (repuesto.CB !== undefined) mapped.cb = repuesto.CB;
     if (repuesto.CI !== undefined) mapped.ci = repuesto.CI;
     if (repuesto.PRODUCTO !== undefined) mapped.producto = repuesto.PRODUCTO;
@@ -187,7 +187,7 @@ const mapRepuestoToDb = (repuesto: Partial<Repuesto>) => {
     if (repuesto.DESCRIPCION_LARGA !== undefined) mapped.descripcion_larga = repuesto.DESCRIPCION_LARGA;
     if (repuesto.ESTANTE !== undefined) mapped.estante = repuesto.ESTANTE;
     if (repuesto.NIVEL !== undefined) mapped.nivel = repuesto.NIVEL;
-    
+
     return mapped;
 };
 
@@ -227,7 +227,7 @@ export const repuestosAPI = {
                 .range(from, to);
 
             if (error) throw new Error(error.message);
-            
+
             if (data && data.length > 0) {
                 allData = [...allData, ...data];
                 hasMore = data.length === pageSize; // Si recibimos menos de pageSize, ya no hay más
@@ -289,7 +289,7 @@ export const repuestosAPI = {
 // Helper para convertir entradas
 const mapEntradaToDb = (entrada: Partial<Entrada>) => {
     const mapped: any = {};
-    
+
     if (entrada.ID !== undefined) mapped.id = entrada.ID;
     if (entrada.N_FACTURA !== undefined) mapped.n_factura = entrada.N_FACTURA;
     if (entrada.PROVEEDOR !== undefined) mapped.proveedor = entrada.PROVEEDOR;
@@ -302,7 +302,7 @@ const mapEntradaToDb = (entrada: Partial<Entrada>) => {
     if (entrada.VALOR_VENTA !== undefined) mapped.valor_venta = entrada.VALOR_VENTA;
     if (entrada.SIIGO !== undefined) mapped.siigo = entrada.SIIGO;
     if (entrada.Columna1 !== undefined) mapped.columna1 = entrada.Columna1;
-    
+
     return mapped;
 };
 
@@ -364,7 +364,7 @@ export const entradasAPI = {
                 .range(from, to);
 
             if (error) throw new Error(error.message);
-            
+
             if (data && data.length > 0) {
                 allData = [...allData, ...data];
                 hasMore = data.length === pageSize;
@@ -391,7 +391,7 @@ export const entradasAPI = {
     async create(entrada: Omit<Entrada, 'ID'>): Promise<Entrada> {
         const dbData = mapEntradaToDb(entrada);
         delete dbData.id; // No enviar ID en create
-        
+
         const { data, error } = await supabase
             .from('entradas')
             .insert([dbData])
@@ -405,7 +405,7 @@ export const entradasAPI = {
     async update(id: number, entrada: Partial<Entrada>): Promise<Entrada> {
         const dbData = mapEntradaToDb(entrada);
         delete dbData.id; // No actualizar ID
-        
+
         const { data, error } = await supabase
             .from('entradas')
             .update(dbData)
@@ -480,9 +480,9 @@ export const marcasAPI = {
     async create(marca: { nombre: string }): Promise<Marca> {
         const { data, error } = await supabase
             .from('marcas')
-            .insert([{ 
+            .insert([{
                 nombre: marca.nombre,
-                activo: true 
+                activo: true
             }])
             .select()
             .single();
@@ -494,7 +494,7 @@ export const marcasAPI = {
     async update(id: number, marca: { nombre: string }): Promise<Marca> {
         const { data, error } = await supabase
             .from('marcas')
-            .update({ 
+            .update({
                 nombre: marca.nombre,
                 fecha_actualizacion: new Date().toISOString()
             })
@@ -665,7 +665,7 @@ export const productoProveedorAPI = {
         // Luego, marcar el proveedor seleccionado como principal
         const { error } = await supabase
             .from('producto_proveedor')
-            .update({ 
+            .update({
                 es_proveedor_principal: true,
                 fecha_ultima_compra: new Date().toISOString().split('T')[0]
             })
@@ -734,7 +734,7 @@ export const salidasAPI = {
                 .range(from, to);
 
             if (error) throw new Error(error.message);
-            
+
             if (data && data.length > 0) {
                 allData = [...allData, ...data];
                 hasMore = data.length === pageSize;

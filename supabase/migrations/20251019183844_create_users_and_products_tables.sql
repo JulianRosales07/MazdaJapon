@@ -250,12 +250,16 @@ CREATE TRIGGER trigger_actualizar_stock_entrada
 CREATE OR REPLACE FUNCTION actualizar_stock_salida()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Verificar que hay suficiente stock
-    IF (SELECT STOCK FROM repuestos WHERE CB = NEW.cb) < NEW.cantidad THEN
-        RAISE EXCEPTION 'Stock insuficiente para el producto %', NEW.cb;
+    -- Solo verificar stock si la cantidad es positiva (salida normal)
+    -- Si es negativa (devolución), no verificar porque estamos sumando al stock
+    IF NEW.cantidad > 0 THEN
+        IF (SELECT STOCK FROM repuestos WHERE CB = NEW.cb) < NEW.cantidad THEN
+            RAISE EXCEPTION 'Stock insuficiente para el producto %', NEW.cb;
+        END IF;
     END IF;
     
     -- Actualizar el stock del repuesto restando la cantidad de salida
+    -- Si cantidad es negativa, STOCK - (-cantidad) = STOCK + cantidad
     UPDATE repuestos
     SET STOCK = STOCK - NEW.cantidad
     WHERE CB = NEW.cb;

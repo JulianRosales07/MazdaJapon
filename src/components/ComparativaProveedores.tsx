@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, TrendingDown, TrendingUp, DollarSign, Package, Building2 } from 'lucide-react';
+import { Search, TrendingDown, Package, Building2 } from 'lucide-react';
 import { repuestosAPI, Repuesto } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
@@ -44,8 +44,7 @@ export default function ComparativaProveedores() {
   const cargarComparativas = async () => {
     try {
       console.log('Iniciando carga de comparativas...');
-      
-      // Estrategia optimizada: Primero obtener todos los productos con proveedores
+
       const { data: todasComparativas, error } = await supabase
         .from('producto_proveedor')
         .select(`
@@ -62,9 +61,6 @@ export default function ComparativaProveedores() {
         throw error;
       }
 
-      console.log(`Total de relaciones producto-proveedor: ${todasComparativas?.length || 0}`);
-
-      // Agrupar por producto
       const productosPorCB = new Map<string, any[]>();
       todasComparativas?.forEach(comp => {
         if (!productosPorCB.has(comp.producto_cb)) {
@@ -73,18 +69,14 @@ export default function ComparativaProveedores() {
         productosPorCB.get(comp.producto_cb)!.push(comp);
       });
 
-      console.log(`Productos únicos con proveedores: ${productosPorCB.size}`);
-
-      // Obtener información de los productos
       const todosProductos = await repuestosAPI.getAll();
       const productosMap = new Map(todosProductos.map(p => [String(p.CB), p]));
 
       const productosConProveedores: ProductoConProveedores[] = [];
 
-      // Procesar cada producto que tiene proveedores
       productosPorCB.forEach((comparativas, productoCB) => {
         const producto = productosMap.get(productoCB);
-        
+
         if (producto) {
           const proveedoresData = comparativas.map(comp => ({
             id: comp.proveedor_id,
@@ -96,7 +88,7 @@ export default function ComparativaProveedores() {
 
           const precios = proveedoresData.map(p => p.precio);
           const preciosValidos = precios.filter(p => p > 0);
-          
+
           const precioMasBajo = preciosValidos.length > 0 ? Math.min(...preciosValidos) : 0;
           const precioMasAlto = preciosValidos.length > 0 ? Math.max(...preciosValidos) : 0;
           const diferencia = precioMasAlto - precioMasBajo;
@@ -111,7 +103,6 @@ export default function ComparativaProveedores() {
         }
       });
 
-      console.log(`Total de productos procesados: ${productosConProveedores.length}`);
       setProductos(productosConProveedores);
       setFilteredProductos(productosConProveedores);
     } catch (error) {
@@ -127,6 +118,8 @@ export default function ComparativaProveedores() {
   const currentProductos = filteredProductos.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
 
+  const maxProveedores = Math.max(...currentProductos.map(p => p.proveedores.length), 0);
+
   const getPorcentajeDiferencia = (item: ProductoConProveedores) => {
     if (item.precioMasBajo === 0) return 0;
     return ((item.diferencia / item.precioMasBajo) * 100).toFixed(1);
@@ -141,7 +134,7 @@ export default function ComparativaProveedores() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {/* Búsqueda */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -149,18 +142,18 @@ export default function ComparativaProveedores() {
               placeholder="Buscar por producto, CB o CI..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none bg-gray-50"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Mostrar:</label>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-600">Mostrar:</label>
             <select
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+              className="px-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none bg-gray-50"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -170,231 +163,123 @@ export default function ComparativaProveedores() {
           </div>
         </div>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                <Package className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Productos con Proveedores</p>
-                <p className="text-2xl font-bold text-blue-900">{productos.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Ahorro Promedio</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {productos.length > 0
-                    ? ((productos.reduce((sum, p) => sum + Number(getPorcentajeDiferencia(p)), 0) / productos.length).toFixed(1))
-                    : '0'}%
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-purple-600 font-medium">Total Proveedores</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {productos.reduce((sum, p) => sum + p.proveedores.length, 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {loading ? (
-          <div className="text-center py-12">
+          <div className="text-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando comparativas...</p>
-            <p className="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos</p>
+            <p className="text-gray-500">Cargando comparativas...</p>
           </div>
         ) : filteredProductos.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-20">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-900 font-semibold mb-2">No se encontraron productos con proveedores configurados</p>
-            <p className="text-gray-600 text-sm mb-4">
-              Para ver comparativas, primero debes asignar proveedores a los productos desde el inventario.
-            </p>
+            <p className="text-gray-900 font-semibold mb-2">No se encontraron productos</p>
             <button
               onClick={cargarComparativas}
-              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+              className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
             >
               Recargar
             </button>
           </div>
         ) : (
           <>
-            <div className="space-y-4">
-              {currentProductos.map((item) => (
-                <div
-                  key={item.producto.CB}
-                  className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
-                >
-                  {/* Header del Producto */}
-                  <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {item.producto.PRODUCTO}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span>CB: {item.producto.CB}</span>
-                        {item.producto.CI && <span>CI: {item.producto.CI}</span>}
-                        {item.producto.MARCA && <span>Marca: {item.producto.MARCA}</span>}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500 mb-1">Diferencia de precio</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-red-600">
-                          ${item.diferencia.toFixed(2)}
-                        </span>
-                        <span className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded-full font-medium">
-                          {getPorcentajeDiferencia(item)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr>
+                    <th className="py-4 px-6 text-sm font-semibold text-gray-900 border-b border-gray-200 min-w-[100px]">CI</th>
+                    <th className="py-4 px-6 text-sm font-semibold text-gray-900 border-b border-gray-200 min-w-[250px]">Producto</th>
+                    {Array.from({ length: maxProveedores }).map((_, i) => (
+                      <th key={i} className="py-4 px-6 text-sm font-semibold text-gray-900 border-b border-gray-200 min-w-[200px]">
+                        Proveedor {i + 1}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentProductos.map((item) => {
+                    const proveedoresOrdenados = [...item.proveedores].sort((a, b) => {
+                      if (a.precio > 0 && b.precio > 0) return a.precio - b.precio;
+                      if (a.precio > 0) return -1;
+                      if (b.precio > 0) return 1;
+                      return 0;
+                    });
 
-                  {/* Lista de Proveedores */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {item.proveedores.map((proveedor, idx) => {
-                      const esMasBarato = proveedor.precio > 0 && proveedor.precio === item.precioMasBajo && item.precioMasBajo > 0;
-                      const esMasCaro = proveedor.precio > 0 && proveedor.precio === item.precioMasAlto && item.precioMasAlto > 0;
+                    return (
+                      <tr key={item.producto.CB} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-6 px-6 border-b border-gray-100 text-sm text-gray-600">
+                          {item.producto.CI || '-'}
+                        </td>
+                        <td className="py-6 px-6 border-b border-gray-100">
+                          <div className="font-medium text-gray-900 text-base">{item.producto.PRODUCTO}</div>
+                          {item.producto.MARCA && (
+                            <div className="text-xs text-gray-500 mt-1">{item.producto.MARCA}</div>
+                          )}
+                        </td>
+                        {Array.from({ length: maxProveedores }).map((_, i) => {
+                          const proveedor = proveedoresOrdenados[i];
+                          const esMasBarato = proveedor && proveedor.precio > 0 && proveedor.precio === item.precioMasBajo;
 
-                      return (
-                        <div
-                          key={idx}
-                          className={`relative p-4 rounded-lg border-2 transition-all ${
-                            esMasBarato
-                              ? 'border-green-500 bg-green-50'
-                              : esMasCaro
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-200 bg-gray-50'
-                          }`}
-                        >
-                          {esMasBarato && (
-                            <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                              ✓ MÁS BARATO
-                            </div>
-                          )}
-                          {proveedor.esPrincipal && (
-                            <div className="absolute -top-2 -left-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                              ★ PRINCIPAL
-                            </div>
-                          )}
-                          
-                          <div className="flex items-start gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              esMasBarato ? 'bg-green-500' : esMasCaro ? 'bg-red-500' : 'bg-gray-400'
-                            }`}>
-                              <Building2 className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 text-sm truncate mb-1">
-                                {proveedor.nombre}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-gray-500" />
-                                {proveedor.precio > 0 ? (
-                                  <span className="text-xl font-bold text-gray-900">
-                                    ${proveedor.precio.toFixed(2)}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-gray-500 italic">
-                                    Sin precio configurado
-                                  </span>
-                                )}
-                              </div>
-                              {item.proveedores.length > 1 && proveedor.precio > 0 && item.precioMasBajo > 0 && (
-                                <div className="mt-2 text-xs">
-                                  {esMasBarato ? (
-                                    <span className="text-green-700 font-medium">
-                                      Ahorro: ${item.diferencia.toFixed(2)}
+                          return (
+                            <td key={i} className="py-6 px-6 border-b border-gray-100 align-top">
+                              {proveedor ? (
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-gray-900">{proveedor.nombre}</span>
+                                    {proveedor.esPrincipal && (
+                                      <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                                        Principal
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {proveedor.precio > 0 ? (
+                                      <span className={`text-lg ${esMasBarato ? 'font-bold text-green-600' : 'text-gray-600'}`}>
+                                        ${proveedor.precio.toFixed(2)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm text-gray-400 italic">Sin precio</span>
+                                    )}
+                                  </div>
+
+                                  {esMasBarato && item.proveedores.length > 1 && (
+                                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-md w-fit mt-1">
+                                      Mejor precio
                                     </span>
-                                  ) : proveedor.precio > item.precioMasBajo ? (
-                                    <span className="text-red-700 font-medium">
-                                      +${(proveedor.precio - item.precioMasBajo).toFixed(2)} más caro
-                                    </span>
-                                  ) : null}
+                                  )}
                                 </div>
+                              ) : (
+                                <span className="text-gray-300">-</span>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Resumen */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-4">
-                      <span className="text-gray-600">
-                        <TrendingDown className="w-4 h-4 inline mr-1" />
-                        Precio más bajo: <span className="font-bold text-green-600">${item.precioMasBajo.toFixed(2)}</span>
-                      </span>
-                      <span className="text-gray-600">
-                        <TrendingUp className="w-4 h-4 inline mr-1" />
-                        Precio más alto: <span className="font-bold text-red-600">${item.precioMasAlto.toFixed(2)}</span>
-                      </span>
-                    </div>
-                    <span className="text-gray-500">
-                      {item.proveedores.length} proveedor{item.proveedores.length > 1 ? 'es' : ''}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {/* Paginación */}
             {totalPages > 1 && (
-              <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProductos.length)} de {filteredProductos.length} productos
+              <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
+                <span className="text-sm text-gray-500">
+                  Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredProductos.length)} de {filteredProductos.length}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                   <button
-                    onClick={() => setCurrentPage(1)}
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    Primera
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Anterior
                   </button>
-                  <span className="px-4 py-2 bg-gray-900 text-white rounded-lg font-medium">
-                    {currentPage} / {totalPages}
-                  </span>
                   <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     Siguiente
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    Última
                   </button>
                 </div>
               </div>
