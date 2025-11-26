@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Package, LogOut, User, Settings, Bell, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine, RotateCcw, FileSpreadsheet, Tag, Building2, BarChart3 } from 'lucide-react';
+import { Home, Package, LogOut, User, Settings, Bell, ArrowDownToLine, ArrowUpFromLine, RotateCcw, FileSpreadsheet, Tag, Building2, BarChart3, PanelLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LOGO from '../assets/mazda.png';
 
@@ -16,12 +16,12 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
 
   return (
     <div className="flex h-screen relative">
-<div className="w-16 flex flex-col items-center py-4 gap-2" style={{backgroundColor: '#2a3042'}}>
+      <div className="w-16 flex flex-col items-center py-4 gap-2" style={{ backgroundColor: '#2a3042' }}>
         {/* Logo */}
         <div className="mb-4 p-2 bg-white rounded-lg">
-          <img 
+          <img
             src={LOGO}
-            alt="Mazda Japon" 
+            alt="Mazda Japon"
             className="w-8 h-8 object-contain"
           />
         </div>
@@ -29,25 +29,20 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {/* Botón de toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-10 h-10 flex items-center justify-center transition-all mb-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+          className="w-10 h-10 flex items-center justify-center transition-all mb-2 "
           title={isExpanded ? 'Contraer sidebar' : 'Expandir sidebar'}
         >
-          {isExpanded ? (
-            <ChevronLeft className="w-4 h-4 text-white" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-white" />
-          )}
+          <PanelLeft className="w-5 h-5 text-white" />
         </button>
 
         {/* Íconos de navegación */}
         {permisos.puedeverDashboard && (
           <button
             onClick={() => onNavigate('dashboard')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'dashboard'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'dashboard'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Dashboard"
           >
             <Home className="w-5 h-5" />
@@ -57,11 +52,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeVerInventario && (
           <button
             onClick={() => onNavigate('inventory')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'inventory'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'inventory'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Inventario"
           >
             <Package className="w-5 h-5" />
@@ -71,11 +65,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeCrearInventario && (
           <button
             onClick={() => onNavigate('entradas')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'entradas'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'entradas'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Entradas"
           >
             <ArrowDownToLine className="w-5 h-5" />
@@ -85,11 +78,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeVerSalidas && (
           <button
             onClick={() => onNavigate('salidas')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'salidas'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'salidas'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Salidas"
           >
             <ArrowUpFromLine className="w-5 h-5" />
@@ -99,11 +91,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {isAdmin && (
           <button
             onClick={() => onNavigate('devoluciones')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'devoluciones'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'devoluciones'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Devoluciones"
           >
             <RotateCcw className="w-5 h-5" />
@@ -113,11 +104,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeVerMarcas && (
           <button
             onClick={() => onNavigate('marcas')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'marcas'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'marcas'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Marcas"
           >
             <Tag className="w-5 h-5" />
@@ -127,11 +117,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeVerProveedores && (
           <button
             onClick={() => onNavigate('proveedores')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'proveedores'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'proveedores'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Proveedores"
           >
             <Building2 className="w-5 h-5" />
@@ -146,11 +135,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {isAdmin && (
           <button
             onClick={() => onNavigate('notificaciones')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'notificaciones'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'notificaciones'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Notificaciones"
           >
             <Bell className="w-5 h-5" />
@@ -160,11 +148,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeExportar && (
           <button
             onClick={() => onNavigate('exportar')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'exportar'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'exportar'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Exportar"
           >
             <FileSpreadsheet className="w-5 h-5" />
@@ -174,11 +161,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {permisos.puedeVerConfiguracion && (
           <button
             onClick={() => onNavigate('configuracion')}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
-              currentPage === 'configuracion'
-                ? 'bg-white text-gray-900'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800'
-            }`}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'configuracion'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
             title="Configuración"
           >
             <Settings className="w-5 h-5" />
@@ -195,9 +181,8 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       </div>
 
       {/* Panel expandido */}
-      <div className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
-        isExpanded ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'
-      }`}>
+      <div className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${isExpanded ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'
+        }`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Mazda Japon</h2>
@@ -213,11 +198,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {permisos.puedeverDashboard && (
               <button
                 onClick={() => onNavigate('dashboard')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'dashboard'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'dashboard'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <Home className="w-4 h-4" />
                 <span>Dashboard</span>
@@ -227,11 +211,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {permisos.puedeVerInventario && (
               <button
                 onClick={() => onNavigate('inventory')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'inventory'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'inventory'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <Package className="w-4 h-4" />
                 <span>Inventario</span>
@@ -241,11 +224,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {permisos.puedeCrearInventario && (
               <button
                 onClick={() => onNavigate('entradas')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'entradas'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'entradas'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <ArrowDownToLine className="w-4 h-4" />
                 <span>Entradas</span>
@@ -255,11 +237,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {permisos.puedeVerSalidas && (
               <button
                 onClick={() => onNavigate('salidas')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'salidas'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'salidas'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <ArrowUpFromLine className="w-4 h-4" />
                 <span>Salidas</span>
@@ -269,11 +250,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             {isAdmin && (
               <button
                 onClick={() => onNavigate('devoluciones')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'devoluciones'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'devoluciones'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Devoluciones</span>
@@ -289,11 +269,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </p>
               <button
                 onClick={() => onNavigate('marcas')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'marcas'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'marcas'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <Tag className="w-4 h-4" />
                 <span>Marcas</span>
@@ -301,11 +280,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               {permisos.puedeVerProveedores && (
                 <button
                   onClick={() => onNavigate('proveedores')}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                    currentPage === 'proveedores'
-                      ? 'bg-gray-100 text-gray-900 font-medium'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'proveedores'
+                    ? 'bg-gray-100 text-gray-900 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
                 >
                   <Building2 className="w-4 h-4" />
                   <span>Proveedores</span>
@@ -314,11 +292,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               {permisos.puedeVerProveedores && (
                 <button
                   onClick={() => onNavigate('comparativa')}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                    currentPage === 'comparativa'
-                      ? 'bg-gray-100 text-gray-900 font-medium'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'comparativa'
+                    ? 'bg-gray-100 text-gray-900 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>Comparativa</span>
@@ -335,11 +312,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </p>
               <button
                 onClick={() => onNavigate('exportar')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'exportar'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'exportar'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 <span>Exportar</span>
@@ -354,11 +330,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </p>
               <button
                 onClick={() => onNavigate('configuracion')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
-                  currentPage === 'configuracion'
-                    ? 'bg-gray-100 text-gray-900 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'configuracion'
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <Settings className="w-4 h-4" />
                 <span>Configuración</span>
@@ -382,11 +357,10 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </div>
             </div>
             <span
-              className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${
-                isAdmin
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-200 text-gray-700'
-              }`}
+              className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${isAdmin
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-200 text-gray-700'
+                }`}
             >
               {usuario?.rol === 'administrador' && 'Administrador'}
               {usuario?.rol === 'gestion_ingresos' && 'Gestión Ingresos'}
