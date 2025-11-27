@@ -1281,7 +1281,7 @@ export default function Inventory() {
                             list="productos-list"
                           />
                           <datalist id="productos-list">
-                            {Array.from(new Set(products.map(p => p.PRODUCTO))).slice(0, 50).map((prod, idx) => (
+                            {Array.from(new Set(products.map(p => p.PRODUCTO))).map((prod, idx) => (
                               <option key={idx} value={prod} />
                             ))}
                           </datalist>

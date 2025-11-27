@@ -26,6 +26,7 @@ export default function Salidas() {
     cantidad: 0,
     motivo: '',
     observaciones: '',
+    n_factura: '',
   });
   const [formData, setFormData] = useState({
     n_factura: 0,
@@ -652,8 +653,14 @@ export default function Salidas() {
 
                 const ciValue = parseInt(String(devolucionData.ci));
                 const cbValue = parseInt(String(devolucionData.cb));
+
+                // Auto-generar número de factura si no se proporciona
+                const nFacturaValue = devolucionData.n_factura
+                  ? parseInt(String(devolucionData.n_factura))
+                  : Math.max(...salidas.map(s => s.n_factura || 0)) + 1;
+
                 const nuevaSalida = {
-                  n_factura: Math.max(...salidas.map(s => s.n_factura || 0)) + 1,
+                  n_factura: nFacturaValue,
                   fecha: parseInt(new Date().toISOString().slice(0, 10).replace(/-/g, '')),
                   cb: !isNaN(cbValue) ? cbValue : null,
                   ci: !isNaN(ciValue) && ciValue > 0 ? ciValue : undefined,
@@ -668,7 +675,7 @@ export default function Salidas() {
                 await fetchProductos();
 
                 setShowDevolucionModal(false);
-                setDevolucionData({ cb: '', ci: '', producto_nombre: '', cantidad: 0, motivo: '', observaciones: '' });
+                setDevolucionData({ cb: '', ci: '', producto_nombre: '', cantidad: 0, motivo: '', observaciones: '', n_factura: '' });
                 alert('Devolución registrada exitosamente');
               } catch (error) {
                 console.error('Error al registrar devolución:', error);
@@ -677,6 +684,18 @@ export default function Salidas() {
             }} className="p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      N° Factura
+                    </label>
+                    <input
+                      type="number"
+                      value={devolucionData.n_factura}
+                      onChange={(e) => setDevolucionData({ ...devolucionData, n_factura: e.target.value })}
+                      placeholder="Auto (opcional)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       CI *

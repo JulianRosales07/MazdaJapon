@@ -266,7 +266,7 @@ export default function Entradas() {
                 <option value={100}>100</option>
               </select>
             </div>
-            {/*            {isAdmin && (
+            {isAdmin && (
               <>
                 <button
                   onClick={() => setShowDevolucionModal(true)}
@@ -275,15 +275,15 @@ export default function Entradas() {
                   <RotateCcw className="w-5 h-5" />
                   Devolución
                 </button>
-                <button
+                {/*    <button
                   onClick={handleOpenModal}
                   className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-medium whitespace-nowrap"
                 >
                   <Plus className="w-5 h-5" />
                   Nueva Entrada
-                </button>
+                </button>*/}
               </>
-            )} */}
+            )}
           </div>
 
           <div className="flex flex-col md:flex-row gap-4">
