@@ -1,5 +1,5 @@
 // Cliente API para el sistema de gestión de repuestos Mazda
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://apimazda.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://apimazda.onrender.com/api';
 
 class ApiClient {
   private baseUrl: string;
@@ -60,7 +60,7 @@ class ApiClient {
   async login(username: string, password: string) {
     try {
       // Try to login with username (could be email or nombre)
-      const response: any = await this.request<any>('/api/auth/login', {
+      const response: any = await this.request<any>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ 
           email: username,  // Backend might expect 'email' field
@@ -119,29 +119,29 @@ class ApiClient {
   // ============================================
   async getRepuestos(params?: { search?: string; limit?: number; offset?: number }) {
     const query = new URLSearchParams(params as any).toString();
-    return this.request<any[]>(`/api/repuestos${query ? `?${query}` : ''}`);
+    return this.request<any[]>(`/repuestos${query ? `?${query}` : ''}`);
   }
 
   async getRepuesto(cb: string) {
-    return this.request<any>(`/api/repuestos/${cb}`);
+    return this.request<any>(`/repuestos/${cb}`);
   }
 
   async createRepuesto(data: any) {
-    return this.request<any>('/api/repuestos', {
+    return this.request<any>('/repuestos', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateRepuesto(cb: string, data: any) {
-    return this.request<any>(`/api/repuestos/${cb}`, {
+    return this.request<any>(`/repuestos/${cb}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteRepuesto(cb: string) {
-    return this.request<any>(`/api/repuestos/${cb}`, {
+    return this.request<any>(`/repuestos/${cb}`, {
       method: 'DELETE',
     });
   }
@@ -150,35 +150,35 @@ class ApiClient {
   // USUARIOS
   // ============================================
   async getUsuarios() {
-    return this.request<any[]>('/api/usuarios');
+    return this.request<any[]>('/usuarios');
   }
 
   async getUsuario(id: number) {
-    return this.request<any>(`/api/usuarios/${id}`);
+    return this.request<any>(`/usuarios/${id}`);
   }
 
   async createUsuario(data: any) {
-    return this.request<any>('/api/usuarios', {
+    return this.request<any>('/usuarios', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateUsuario(id: number, data: any) {
-    return this.request<any>(`/api/usuarios/${id}`, {
+    return this.request<any>(`/usuarios/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteUsuario(id: number) {
-    return this.request<any>(`/api/usuarios/${id}`, {
+    return this.request<any>(`/usuarios/${id}`, {
       method: 'DELETE',
     });
   }
 
   async updatePassword(id: number, password: string) {
-    return this.request<any>(`/api/usuarios/${id}/password`, {
+    return this.request<any>(`/usuarios/${id}/password`, {
       method: 'PUT',
       body: JSON.stringify({ password }),
     });
@@ -189,29 +189,29 @@ class ApiClient {
   // ============================================
   async getEntradas(params?: { fecha_inicio?: string; fecha_fin?: string }) {
     const query = new URLSearchParams(params as any).toString();
-    return this.request<any[]>(`/api/entradas${query ? `?${query}` : ''}`);
+    return this.request<any[]>(`/entradas${query ? `?${query}` : ''}`);
   }
 
   async getEntrada(id: number) {
-    return this.request<any>(`/api/entradas/${id}`);
+    return this.request<any>(`/entradas/${id}`);
   }
 
   async createEntrada(data: any) {
-    return this.request<any>('/api/entradas', {
+    return this.request<any>('/entradas', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateEntrada(id: number, data: any) {
-    return this.request<any>(`/api/entradas/${id}`, {
+    return this.request<any>(`/entradas/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteEntrada(id: number) {
-    return this.request<any>(`/api/entradas/${id}`, {
+    return this.request<any>(`/entradas/${id}`, {
       method: 'DELETE',
     });
   }
@@ -221,29 +221,29 @@ class ApiClient {
   // ============================================
   async getSalidas(params?: { fecha_inicio?: string; fecha_fin?: string }) {
     const query = new URLSearchParams(params as any).toString();
-    return this.request<any[]>(`/api/salidas${query ? `?${query}` : ''}`);
+    return this.request<any[]>(`/salidas${query ? `?${query}` : ''}`);
   }
 
   async getSalida(n_factura: number) {
-    return this.request<any>(`/api/salidas/${n_factura}`);
+    return this.request<any>(`/salidas/${n_factura}`);
   }
 
   async createSalida(data: any) {
-    return this.request<any>('/api/salidas', {
+    return this.request<any>('/salidas', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateSalida(n_factura: number, data: any) {
-    return this.request<any>(`/api/salidas/${n_factura}`, {
+    return this.request<any>(`/salidas/${n_factura}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteSalida(n_factura: number) {
-    return this.request<any>(`/api/salidas/${n_factura}`, {
+    return this.request<any>(`/salidas/${n_factura}`, {
       method: 'DELETE',
     });
   }
@@ -252,35 +252,35 @@ class ApiClient {
   // PROVEEDORES
   // ============================================
   async getProveedores() {
-    return this.request<any[]>('/api/proveedores');
+    return this.request<any[]>('/proveedores');
   }
 
   async getProveedor(id: number) {
-    return this.request<any>(`/api/proveedores/${id}`);
+    return this.request<any>(`/proveedores/${id}`);
   }
 
   async createProveedor(data: any) {
-    return this.request<any>('/api/proveedores', {
+    return this.request<any>('/proveedores', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateProveedor(id: number, data: any) {
-    return this.request<any>(`/api/proveedores/${id}`, {
+    return this.request<any>(`/proveedores/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteProveedor(id: number) {
-    return this.request<any>(`/api/proveedores/${id}`, {
+    return this.request<any>(`/proveedores/${id}`, {
       method: 'DELETE',
     });
   }
 
   async activarProveedor(id: number) {
-    return this.request<any>(`/api/proveedores/${id}/activar`, {
+    return this.request<any>(`/proveedores/${id}/activar`, {
       method: 'PATCH',
     });
   }
@@ -289,48 +289,48 @@ class ApiClient {
   // PRODUCTO-PROVEEDOR
   // ============================================
   async getProductoProveedores() {
-    return this.request<any[]>('/api/producto-proveedor');
+    return this.request<any[]>('/producto-proveedor');
   }
 
   async getProveedoresByProducto(producto_cb: string) {
-    return this.request<any[]>(`/api/producto-proveedor/producto/${producto_cb}`);
+    return this.request<any[]>(`/producto-proveedor/producto/${producto_cb}`);
   }
 
   async getProductosByProveedor(proveedor_id: number) {
-    return this.request<any[]>(`/api/producto-proveedor/proveedor/${proveedor_id}`);
+    return this.request<any[]>(`/producto-proveedor/proveedor/${proveedor_id}`);
   }
 
   async getProveedorMasBarato(producto_cb: string) {
-    return this.request<any>(`/api/producto-proveedor/producto/${producto_cb}/mas-barato`);
+    return this.request<any>(`/producto-proveedor/producto/${producto_cb}/mas-barato`);
   }
 
   async getComparativaProveedores(producto_cb: string) {
-    return this.request<any[]>(`/api/producto-proveedor/producto/${producto_cb}/comparativa`);
+    return this.request<any[]>(`/producto-proveedor/producto/${producto_cb}/comparativa`);
   }
 
   async createProductoProveedor(data: any) {
-    return this.request<any>('/api/producto-proveedor', {
+    return this.request<any>('/producto-proveedor', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async setProveedorPrincipal(data: { producto_cb: string; proveedor_id: number }) {
-    return this.request<any>('/api/producto-proveedor/principal', {
+    return this.request<any>('/producto-proveedor/principal', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateProductoProveedor(id: number, data: any) {
-    return this.request<any>(`/api/producto-proveedor/${id}`, {
+    return this.request<any>(`/producto-proveedor/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteProductoProveedor(id: number) {
-    return this.request<any>(`/api/producto-proveedor/${id}`, {
+    return this.request<any>(`/producto-proveedor/${id}`, {
       method: 'DELETE',
     });
   }

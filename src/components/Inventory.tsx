@@ -765,11 +765,7 @@ export default function Inventory() {
                     <p className="text-4xl font-semibold text-gray-900 mb-2">${Number(selectedProduct.PRECIO).toFixed(2)}</p>
                     <p className="text-xs text-gray-500">por unidad</p>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Valor Total</p>
-                    <p className="text-4xl font-semibold text-gray-900 mb-2">${(Number(selectedProduct.STOCK) * Number(selectedProduct.PRECIO)).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">en inventario</p>
-                  </div>
+                  
                 </div>
               </div>
 
