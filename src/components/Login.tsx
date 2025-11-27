@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import LOGO from '../assets/mazda.png'
+import LOGO from '../assets/mazda.png';
 import { LogIn } from 'lucide-react';
 import { DotPattern } from './ui/dot-pattern';
 import { cn } from '@/lib/utils';

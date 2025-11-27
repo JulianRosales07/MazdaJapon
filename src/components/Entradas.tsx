@@ -1,8 +1,34 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
-import { Plus, Search, ArrowUpDown, Filter, RotateCcw, X } from 'lucide-react';
-import { repuestosAPI, Repuesto, entradasAPI, Entrada } from '../lib/api';
+import { Search, ArrowUpDown, Filter, RotateCcw, X } from 'lucide-react';
+import { apiClient } from '../lib/apiClient';
 import ProductSelect from './ProductSelect';
 import { useAuth } from '../contexts/AuthContext';
+
+// Tipos
+interface Repuesto {
+  CB: string;
+  CI?: string;
+  PRODUCTO: string;
+  STOCK: number;
+  MARCA?: string;
+  PRECIO?: number;
+  [key: string]: any;
+}
+
+interface Entrada {
+  ID?: number;
+  N_FACTURA: string;
+  PROVEEDOR: string;
+  FECHA: string;
+  CB: string;
+  CI?: string;
+  DESCRIPCION: string;
+  CANTIDAD: number;
+  COSTO: number;
+  VALOR_VENTA?: number | null;
+  SIIGO?: string;
+  Columna1?: string | null;
+}
 
 export default function Entradas() {
   const { isAdmin } = useAuth();
@@ -45,26 +71,89 @@ export default function Entradas() {
     fetchEntradas();
   }, [filterProveedor, filterFecha]);
 
+  // Función para normalizar productos
+  const normalizeProduct = (product: any): Repuesto => {
+    return {
+      CB: product.cb || product.CB || '',
+      CI: product.ci || product.CI || '',
+      PRODUCTO: product.producto || product.PRODUCTO || '',
+      STOCK: product.stock || product.STOCK || 0,
+    };
+  };
+
+  // Función para normalizar entradas
+  const normalizeEntrada = (entrada: any): Entrada => {
+    return {
+      ID: entrada.id || entrada.ID,
+      N_FACTURA: entrada.n_factura || entrada.N_FACTURA || '',
+      PROVEEDOR: entrada.proveedor || entrada.PROVEEDOR || '',
+      FECHA: entrada.fecha || entrada.FECHA || '',
+      CB: entrada.cb || entrada.CB || '',
+      CI: entrada.ci || entrada.CI || '',
+      DESCRIPCION: entrada.descripcion || entrada.DESCRIPCION || '',
+      CANTIDAD: entrada.cantidad || entrada.CANTIDAD || 0,
+      COSTO: entrada.costo || entrada.COSTO || 0,
+      VALOR_VENTA: entrada.valor_venta || entrada.VALOR_VENTA || null,
+      SIIGO: entrada.siigo || entrada.SIIGO || 'NO',
+      Columna1: entrada.columna1 || entrada.Columna1 || null,
+    };
+  };
+
   const fetchProductos = async () => {
     try {
-      const data = await repuestosAPI.getAll();
-      setProductos(data);
+      const response = await apiClient.getRepuestos();
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        console.error('Productos - respuesta no es array:', data);
+        setProductos([]);
+        return;
+      }
+
+      const normalized = data.map(normalizeProduct);
+      setProductos(normalized);
     } catch (error) {
       console.error('Error al cargar productos:', error);
+      setProductos([]);
     }
   };
 
   const fetchEntradas = async () => {
     try {
       setLoading(true);
-      const params: { proveedor?: string; fecha?: string } = {};
-      if (filterProveedor) params.proveedor = filterProveedor;
-      if (filterFecha) params.fecha = filterFecha;
+      const params: { fecha_inicio?: string; fecha_fin?: string } = {};
+      if (filterFecha) {
+        params.fecha_inicio = filterFecha;
+        params.fecha_fin = filterFecha;
+      }
 
-      const data = await entradasAPI.getAll(params);
-      setEntradas(data);
+      const response = await apiClient.getEntradas(params);
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        console.error('Entradas - respuesta no es array:', data);
+        setEntradas([]);
+        return;
+      }
+
+      // Normalizar entradas
+      const normalized = data.map(normalizeEntrada);
+      
+      // Filtrar por proveedor en el cliente si es necesario
+      const filteredData = filterProveedor 
+        ? normalized.filter(e => e.PROVEEDOR === filterProveedor)
+        : normalized;
+      
+      setEntradas(filteredData);
     } catch (error) {
       console.error('Error al cargar entradas:', error);
+      setEntradas([]);
     } finally {
       setLoading(false);
     }
@@ -156,23 +245,11 @@ export default function Entradas() {
         Columna1: formData.Columna1,
       };
 
-      // Crear la entrada
-      await entradasAPI.create(nuevaEntrada);
+      // Crear la entrada (el backend actualiza el stock automáticamente)
+      await apiClient.createEntrada(nuevaEntrada);
 
-      // Si existe el producto en el inventario, actualizar el stock (sumar la cantidad)
-      if (producto) {
-        const stockActual = parseFloat(String(producto.STOCK)) || 0;
-        const cantidadEntrada = Math.abs(formData.CANTIDAD);
-        const nuevoStock = stockActual + cantidadEntrada;
-
-        await repuestosAPI.update(String(producto.CB), {
-          ...producto,
-          STOCK: nuevoStock
-        });
-
-        // Recargar productos para reflejar el cambio
-        await fetchProductos();
-      }
+      // Recargar productos para reflejar el cambio de stock
+      await fetchProductos();
 
       await fetchEntradas();
       setShowModal(false);
@@ -521,7 +598,7 @@ export default function Entradas() {
                     Producto (CB) *
                   </label>
                   <ProductSelect
-                    productos={productos}
+                    productos={productos as any}
                     value={formData.CB}
                     onChange={(cb, producto) => {
                       setFormData({
@@ -708,22 +785,11 @@ export default function Entradas() {
                   Columna1: `Motivo: ${devolucionData.motivo}. ${devolucionData.observaciones}`,
                 };
 
-                await entradasAPI.create(nuevaEntrada);
+                // Crear la entrada de devolución (el backend actualiza el stock automáticamente)
+                await apiClient.createEntrada(nuevaEntrada);
 
-                // Si existe el producto, actualizar el stock (restar la cantidad devuelta)
-                if (producto) {
-                  const stockActual = parseFloat(String(producto.STOCK)) || 0;
-                  const cantidadDevolucion = Math.abs(devolucionData.cantidad);
-                  const nuevoStock = stockActual - cantidadDevolucion;
-
-                  await repuestosAPI.update(String(producto.CB), {
-                    ...producto,
-                    STOCK: nuevoStock
-                  });
-
-                  // Recargar productos para reflejar el cambio
-                  await fetchProductos();
-                }
+                // Recargar productos para reflejar el cambio de stock
+                await fetchProductos();
 
                 await fetchEntradas();
                 setShowDevolucionModal(false);

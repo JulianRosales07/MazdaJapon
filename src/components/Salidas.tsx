@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Eye, Trash2, X, RotateCcw, ArrowUpDown } from 'lucide-react';
-import { repuestosAPI, Repuesto, salidasAPI, Salida } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import type { Repuesto, Salida } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import { salidasAPI } from '@/lib/api';
 
 export default function Salidas() {
   const { isAdmin } = useAuth();
@@ -45,28 +47,70 @@ export default function Salidas() {
     fetchSalidas();
   }, []);
 
+  // Normalizar productos
+  const normalizeProduct = (product: any): Repuesto => {
+    return {
+      CB: product.cb || product.CB || '',
+      CI: product.ci || product.CI || '',
+      PRODUCTO: product.producto || product.PRODUCTO || '',
+      STOCK: product.stock || product.STOCK || 0,
+      PRECIO: product.precio || product.PRECIO || 0,
+      MARCA: product.marca || product.MARCA || '',
+    };
+  };
+
+  // Normalizar salidas
+  const normalizeSalida = (salida: any): Salida => {
+    return {
+      n_factura: Number(salida.n_factura || salida.N_FACTURA || 0),
+      fecha: Number(salida.fecha || salida.FECHA || 0),
+      cb: Number(salida.cb || salida.CB || 0),
+      ci: Number(salida.ci || salida.CI || 0),
+      descripcion: String(salida.descripcion || salida.DESCRIPCION || ''),
+      valor: Number(salida.valor || salida.VALOR || 0),
+      cantidad: Number(salida.cantidad || salida.CANTIDAD || 0),
+      columna1: salida.columna1 || salida.Columna1 || null,
+    };
+  };
+
   const fetchProductos = async () => {
     try {
-      const data = await repuestosAPI.getAll();
-      setProductos(data);
+      const response = await apiClient.getRepuestos();
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        setProductos([]);
+        return;
+      }
+
+      setProductos(data.map(normalizeProduct));
     } catch (error) {
       console.error('Error al cargar productos:', error);
+      setProductos([]);
     }
   };
 
   const fetchSalidas = async () => {
     try {
       setLoading(true);
-      const data = await salidasAPI.getAll();
-      console.log('Salidas cargadas:', data.length);
-      if (data.length > 0) {
-        console.log('Ejemplo de fechas:', data.slice(0, 5).map(s => ({
-          n_factura: s.n_factura,
-          fecha: s.fecha,
-          tipo: typeof s.fecha
-        })));
+      const response = await apiClient.getSalidas();
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
       }
-      setSalidas(data);
+      
+      if (!Array.isArray(data)) {
+        setSalidas([]);
+        setLoading(false);
+        return;
+      }
+
+      const normalized = data.map(normalizeSalida);
+      console.log('Salidas cargadas:', normalized.length);
+      setSalidas(normalized);
     } catch (error) {
       console.error('Error al cargar salidas:', error);
     } finally {
@@ -76,11 +120,6 @@ export default function Salidas() {
 
   const handleCreate = () => {
     setModalMode('create');
-
-    // Filtrar solo facturas con números razonables (< 100000) para evitar números de fecha u otros
-    const facturasValidas = salidas
-      .map(s => s.n_factura || 0)
-      .filter(num => num > 0 && num < 100000);
 
     setFormData({
       n_factura: 0,
@@ -101,9 +140,9 @@ export default function Salidas() {
     setSelectedSalida(salida);
     setFormData({
       n_factura: salida.n_factura,
-      fecha: salida.fecha,
-      cb: salida.cb || 0,
-      ci: salida.ci || 0,
+      fecha: Number(salida.fecha),
+      cb: Number(salida.cb) || 0,
+      ci: Number(salida.ci) || 0,
       descripcion: salida.descripcion,
       valor: salida.valor,
       cantidad: salida.cantidad,
@@ -125,7 +164,7 @@ export default function Salidas() {
     if (!salidaToDelete) return;
 
     try {
-      await salidasAPI.delete(salidaToDelete);
+      await apiClient.deleteSalida(salidaToDelete);
       await fetchSalidas();
       setShowDeleteModal(false);
       setSalidaToDelete(null);
@@ -162,17 +201,10 @@ export default function Salidas() {
             finalFormData.n_factura = maxFactura + 1;
           }
 
-          // Crear la salida
-          await salidasAPI.create(finalFormData);
+          // Crear la salida (el backend actualiza el stock automáticamente)
+          await apiClient.createSalida(finalFormData);
 
-          // Actualizar el stock del producto (restar la cantidad)
-          const nuevoStock = stockActual - cantidadSalida;
-          await repuestosAPI.update(String(producto.CB), {
-            ...producto,
-            STOCK: nuevoStock
-          });
-
-          // Recargar productos para reflejar el cambio
+          // Recargar productos para reflejar el cambio de stock
           await fetchProductos();
         } else {
           // Auto-generar número de factura si es 0
@@ -185,11 +217,11 @@ export default function Salidas() {
             finalFormData.n_factura = maxFactura + 1;
           }
           // Si no existe el producto, crear la salida sin actualizar stock
-          await salidasAPI.create(finalFormData);
+          await apiClient.createSalida(finalFormData);
         }
       } else if (selectedSalida) {
         // En modo edición, solo actualizar la salida sin modificar stock
-        await salidasAPI.update(selectedSalida.n_factura, formData);
+        await apiClient.updateSalida(selectedSalida.n_factura, formData);
       }
 
       setShowModal(false);

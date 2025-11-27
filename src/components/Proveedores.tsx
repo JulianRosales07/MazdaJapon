@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Building2, DollarSign, Hash } from 'lucide-react';
-import { proveedoresAPI, Proveedor, repuestosAPI } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import type { Proveedor, Repuesto } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Proveedores() {
@@ -44,13 +45,43 @@ export default function Proveedores() {
     setCurrentPage(1);
   }, [searchTerm, proveedores]);
 
+  // Normalizar proveedores
+  const normalizeProveedor = (prov: any): Proveedor => {
+    return {
+      id_proveedor: prov.id_proveedor || prov.ID_PROVEEDOR || 0,
+      ci: prov.ci || prov.CI || null,
+      cp: prov.cp || prov.CP || '',
+      nombre_proveedor: prov.nombre_proveedor || prov.NOMBRE_PROVEEDOR || '',
+      costo: prov.costo || prov.COSTO || 0,
+      fecha_creacion: prov.fecha_creacion,
+      fecha_actualizacion: prov.fecha_actualizacion,
+      usuario_creacion: prov.usuario_creacion,
+      activo: prov.activo,
+    };
+  };
+
   const fetchProveedores = async () => {
     try {
-      const data = await proveedoresAPI.getAll();
-      setProveedores(data);
-      setFilteredProveedores(data);
+      const response = await apiClient.getProveedores();
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        setProveedores([]);
+        setFilteredProveedores([]);
+        setLoading(false);
+        return;
+      }
+
+      const normalized = data.map(normalizeProveedor);
+      setProveedores(normalized);
+      setFilteredProveedores(normalized);
     } catch (error) {
       console.error('Error al cargar proveedores:', error);
+      setProveedores([]);
+      setFilteredProveedores([]);
     } finally {
       setLoading(false);
     }
@@ -58,9 +89,20 @@ export default function Proveedores() {
 
   const fetchCodigosInternos = async () => {
     try {
-      const productos = await repuestosAPI.getAll();
+      const response = await apiClient.getRepuestos();
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        setCodigosInternos([]);
+        return;
+      }
+
+      const productos = data;
       const codigos = productos
-        .map(p => p.CI)
+        .map(p => p.ci || p.CI)
         .filter((ci): ci is string => ci !== null && ci !== undefined && ci !== '')
         .filter((ci, index, self) => self.indexOf(ci) === index)
         .sort();
@@ -99,7 +141,7 @@ export default function Proveedores() {
     if (!proveedorToDelete) return;
 
     try {
-      await proveedoresAPI.delete(proveedorToDelete);
+      await apiClient.deleteProveedor(proveedorToDelete);
       await fetchProveedores();
       setShowDeleteDialog(false);
       setProveedorToDelete(null);
@@ -114,9 +156,9 @@ export default function Proveedores() {
 
     try {
       if (modalMode === 'create') {
-        await proveedoresAPI.create(formData);
+        await apiClient.createProveedor(formData);
       } else if (selectedProveedor) {
-        await proveedoresAPI.update(selectedProveedor.id_proveedor!, formData);
+        await apiClient.updateProveedor(selectedProveedor.id_proveedor!, formData);
       }
 
       setShowModal(false);

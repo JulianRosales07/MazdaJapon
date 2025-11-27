@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { usuariosAPI, Usuario, Rol } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import type { Usuario, Rol } from '../lib/types';
 import { tienePermiso, Permiso, usePermisos } from '../lib/permissions';
 
 type AuthContextType = {
@@ -35,9 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     try {
-      const { usuario: user } = await usuariosAPI.login(username, password);
-      setUsuario(user);
-      localStorage.setItem('usuario', JSON.stringify(user));
+      const response = await apiClient.login(username, password);
+      setUsuario(response.user);
+      localStorage.setItem('usuario', JSON.stringify(response.user));
       return { error: null };
     } catch (error) {
       console.error('Error en login:', error);
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rol: Rol = 'usuario'
   ) => {
     try {
-      const user = await usuariosAPI.create({
+      const user = await apiClient.createUsuario({
         nombre,
         email,
         password,
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    await apiClient.logout();
     setUsuario(null);
     localStorage.removeItem('usuario');
   };

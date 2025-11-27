@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, TrendingDown, Package, Building2 } from 'lucide-react';
-import { repuestosAPI, Repuesto } from '../lib/api';
-import { supabase } from '../lib/supabase';
+import { apiClient } from '../lib/apiClient';
+import type { Repuesto, ProductoProveedor } from '../lib/types';
 
 type ProductoConProveedores = {
   producto: Repuesto;
@@ -32,8 +32,8 @@ export default function ComparativaProveedores() {
     const filtered = productos.filter((item) => {
       const searchLower = searchTerm.toLowerCase();
       return (
-        item.producto.PRODUCTO.toLowerCase().includes(searchLower) ||
-        String(item.producto.CB).toLowerCase().includes(searchLower) ||
+        (item.producto.PRODUCTO || '').toLowerCase().includes(searchLower) ||
+        String(item.producto.CB || '').toLowerCase().includes(searchLower) ||
         String(item.producto.CI || '').toLowerCase().includes(searchLower)
       );
     });
@@ -45,32 +45,48 @@ export default function ComparativaProveedores() {
     try {
       console.log('Iniciando carga de comparativas...');
 
-      const { data: todasComparativas, error } = await supabase
-        .from('producto_proveedor')
-        .select(`
-          *,
-          proveedores (
-            id_proveedor,
-            nombre_proveedor
-          )
-        `)
-        .eq('activo', true);
-
-      if (error) {
-        console.error('Error cargando comparativas:', error);
-        throw error;
-      }
+      // Obtener todas las comparativas desde la API
+      const response: any = await apiClient.getProductoProveedores();
+      const todasComparativas = response.data || response || [];
+      console.log('Comparativas cargadas:', todasComparativas.length);
 
       const productosPorCB = new Map<string, any[]>();
-      todasComparativas?.forEach(comp => {
-        if (!productosPorCB.has(comp.producto_cb)) {
-          productosPorCB.set(comp.producto_cb, []);
+      todasComparativas.forEach((comp: any) => {
+        const cb = String(comp.producto_cb);
+        if (!productosPorCB.has(cb)) {
+          productosPorCB.set(cb, []);
         }
-        productosPorCB.get(comp.producto_cb)!.push(comp);
+        productosPorCB.get(cb)!.push(comp);
       });
 
-      const todosProductos = await repuestosAPI.getAll();
-      const productosMap = new Map(todosProductos.map(p => [String(p.CB), p]));
+      console.log('Productos únicos con proveedores:', productosPorCB.size);
+
+      const productosResponse: any = await apiClient.getRepuestos();
+      const todosProductos = productosResponse.data || productosResponse || [];
+      console.log('Total productos cargados:', todosProductos.length);
+      
+      // Log sample product to see CB format
+      if (todosProductos.length > 0) {
+        console.log('Sample product keys:', Object.keys(todosProductos[0]));
+        console.log('Sample product:', todosProductos[0]);
+      }
+      
+      // Log sample comparativa CB
+      if (todasComparativas.length > 0) {
+        console.log('Sample comparativa CB:', todasComparativas[0].producto_cb, 'Type:', typeof todasComparativas[0].producto_cb);
+      }
+      
+      // Normalize products to uppercase properties and create map
+      const productosNormalizados = todosProductos.map((p: any) => ({
+        CB: p.cb || p.CB,
+        PRODUCTO: p.producto || p.PRODUCTO,
+        MARCA: p.marca || p.MARCA,
+        CI: p.ci || p.CI,
+        STOCK: p.stock || p.STOCK,
+        PRECIO: p.precio || p.PRECIO,
+      }));
+      
+      const productosMap = new Map(productosNormalizados.map((p: any) => [String(p.CB), p]));
 
       const productosConProveedores: ProductoConProveedores[] = [];
 
@@ -78,9 +94,8 @@ export default function ComparativaProveedores() {
         const producto = productosMap.get(productoCB);
 
         if (producto) {
-          const proveedoresData = comparativas.map(comp => ({
+          const proveedoresData = comparativas.map((comp: any) => ({
             id: comp.proveedor_id,
-            // @ts-ignore
             nombre: comp.proveedores?.nombre_proveedor || 'Desconocido',
             precio: Number(comp.precio_proveedor) || 0,
             esPrincipal: comp.es_proveedor_principal || false,
@@ -94,15 +109,18 @@ export default function ComparativaProveedores() {
           const diferencia = precioMasAlto - precioMasBajo;
 
           productosConProveedores.push({
-            producto,
+            producto: producto as Repuesto,
             proveedores: proveedoresData,
             precioMasBajo,
             precioMasAlto,
             diferencia,
           });
+        } else {
+          console.log('Producto no encontrado para CB:', productoCB);
         }
       });
 
+      console.log('Productos con proveedores procesados:', productosConProveedores.length);
       setProductos(productosConProveedores);
       setFilteredProductos(productosConProveedores);
     } catch (error) {

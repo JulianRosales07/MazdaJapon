@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Package, TrendingUp, AlertCircle, Zap, Activity, ArrowUpRight, ShoppingCart } from 'lucide-react';
-import { repuestosAPI, Repuesto } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+
+interface Repuesto {
+  CB: string;
+  PRODUCTO: string;
+  STOCK: number;
+  PRECIO: number;
+  [key: string]: any;
+}
 
 import { DotPattern } from './ui/dot-pattern';
 import { cn } from '@/lib/utils';
@@ -26,17 +34,51 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     fetchStats();
   }, []);
 
+  // Función para normalizar las propiedades de minúsculas a mayúsculas
+  const normalizeProduct = (product: any): Repuesto => {
+    return {
+      CB: product.cb || product.CB || '',
+      PRODUCTO: product.producto || product.PRODUCTO || '',
+      STOCK: product.stock || product.STOCK || 0,
+      PRECIO: product.precio || product.PRECIO || 0,
+    };
+  };
+
   const fetchStats = async () => {
     try {
-      const data = await repuestosAPI.getAll();
+      const response = await apiClient.getRepuestos();
+      
+      // La API devuelve { ok, message, data: [...] }
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      // Verificar que data sea un array
+      if (!Array.isArray(data)) {
+        console.error('La respuesta no es un array:', data);
+        setStats({
+          totalProducts: 0,
+          totalStock: 0,
+          lowStock: 0,
+          totalValue: 0,
+        });
+        setRecentProducts([]);
+        return;
+      }
 
-      const totalProducts = data.length;
-      const totalStock = data.reduce((sum: number, item: Repuesto) => sum + Number(item.STOCK), 0);
-      const lowStock = data.filter((item: Repuesto) => Number(item.STOCK) < 10).length;
-      const totalValue = data.reduce((sum: number, item: Repuesto) => sum + (Number(item.STOCK) * Number(item.PRECIO)), 0);
+      console.log('Dashboard - Procesando', data.length, 'productos');
+
+      // Normalizar los productos
+      const normalizedData = data.map(normalizeProduct);
+
+      const totalProducts = normalizedData.length;
+      const totalStock = normalizedData.reduce((sum: number, item: Repuesto) => sum + Number(item.STOCK || 0), 0);
+      const lowStock = normalizedData.filter((item: Repuesto) => Number(item.STOCK || 0) < 10).length;
+      const totalValue = normalizedData.reduce((sum: number, item: Repuesto) => sum + (Number(item.STOCK || 0) * Number(item.PRECIO || 0)), 0);
 
       // Get 5 most recent products (simulated by taking last 5)
-      const recent = data.slice(-5).reverse();
+      const recent = normalizedData.slice(-5).reverse();
 
       setStats({
         totalProducts,
@@ -47,6 +89,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       setRecentProducts(recent);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Establecer valores por defecto en caso de error
+      setStats({
+        totalProducts: 0,
+        totalStock: 0,
+        lowStock: 0,
+        totalValue: 0,
+      });
+      setRecentProducts([]);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft } from 'lucide-react';
-import { repuestosAPI, Repuesto, entradasAPI, proveedoresAPI, Proveedor, productoProveedorAPI, ProductoProveedor } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import type { Repuesto, Proveedor, ProductoProveedor } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import Tooltip from './Tooltip';
 import CustomSelect from './CustomSelect';
@@ -84,7 +85,7 @@ export default function Inventory() {
 
   const fetchProveedores = async () => {
     try {
-      const data = await proveedoresAPI.getAll();
+      const data = await apiClient.getProveedores();
       setAvailableProveedores(data);
     } catch (error) {
       console.error('Error fetching proveedores:', error);
@@ -93,7 +94,7 @@ export default function Inventory() {
 
   const cargarComparativaProveedores = async (productoCB: string) => {
     try {
-      const comparativas = await productoProveedorAPI.getByProducto(productoCB);
+      const comparativas = await apiClient.getProveedoresByProducto(productoCB);
 
       // Resetear los proveedores
       resetProveedoresSelector();
@@ -158,7 +159,7 @@ export default function Inventory() {
 
       // Guardar cada proveedor
       for (const prov of proveedoresAGuardar) {
-        await productoProveedorAPI.upsert({
+        await apiClient.createProductoProveedor({
           producto_cb: productoCB,
           proveedor_id: prov.id!,
           precio_proveedor: prov.precio || 0,
@@ -219,7 +220,10 @@ export default function Inventory() {
         try {
           await guardarComparativaProveedores(String(formData.CB));
           // Marcar este proveedor como principal
-          await productoProveedorAPI.setProveedorPrincipal(String(formData.CB), proveedor.id);
+          await apiClient.setProveedorPrincipal({ 
+            producto_cb: String(formData.CB), 
+            proveedor_id: proveedor.id 
+          });
         } catch (error) {
           console.error('Error al guardar comparativa:', error);
         }
@@ -283,13 +287,59 @@ export default function Inventory() {
     setCurrentPage(pageNumber);
   };
 
+  // Función para normalizar las propiedades de minúsculas a mayúsculas
+  const normalizeProduct = (product: any): Repuesto => {
+    return {
+      CB: product.cb || product.CB || '',
+      CI: product.ci || product.CI || null,
+      PRODUCTO: product.producto || product.PRODUCTO || '',
+      TIPO: product.tipo || product.TIPO || null,
+      MODELO_ESPECIFICACION: product.modelo_especificacion || product.MODELO_ESPECIFICACION || null,
+      REFERENCIA: product.referencia || product.REFERENCIA || null,
+      MARCA: product.marca || product.MARCA || null,
+      EXISTENCIAS_INICIALES: product.existencias_iniciales || product.EXISTENCIAS_INICIALES || 0,
+      STOCK: product.stock || product.STOCK || 0,
+      PRECIO: product.precio || product.PRECIO || 0,
+      DESCRIPCION_LARGA: product.descripcion_larga || product.DESCRIPCION_LARGA || null,
+      ESTANTE: product.estante || product.ESTANTE || null,
+      NIVEL: product.nivel || product.NIVEL || null,
+      fecha_creacion: product.fecha_creacion,
+      fecha_actualizacion: product.fecha_actualizacion,
+      usuario_creacion: product.usuario_creacion,
+      activo: product.activo,
+    };
+  };
+
   const fetchProducts = async () => {
     try {
-      const data = await repuestosAPI.getAll();
-      setProducts(data);
-      setFilteredProducts(data);
+      const response = await apiClient.getRepuestos();
+      
+      // La API devuelve { ok, message, data: [...] }
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      // Verificar que data sea un array
+      if (!Array.isArray(data)) {
+        console.error('La respuesta no es un array:', data);
+        setProducts([]);
+        setFilteredProducts([]);
+        return;
+      }
+
+      console.log('Inventory - Procesando', data.length, 'productos');
+      
+      // Normalizar los productos (convertir propiedades a mayúsculas)
+      const normalizedProducts = data.map(normalizeProduct);
+      console.log('Inventory - Primer producto normalizado:', normalizedProducts[0]);
+      
+      setProducts(normalizedProducts);
+      setFilteredProducts(normalizedProducts);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setProducts([]);
+      setFilteredProducts([]);
     } finally {
       setLoading(false);
     }
@@ -486,7 +536,7 @@ export default function Inventory() {
     if (!productToDelete) return;
 
     try {
-      await repuestosAPI.delete(String(productToDelete));
+      await apiClient.deleteRepuesto(String(productToDelete));
       await fetchProducts();
       setShowDeleteDialog(false);
       setProductToDelete(null);
@@ -522,7 +572,7 @@ export default function Inventory() {
       if (modalMode === 'create') {
         if (isExistingProduct) {
           // Actualizar producto existente con nuevo stock
-          await repuestosAPI.update(String(formData.CB), dataToSave);
+          await apiClient.updateRepuesto(String(formData.CB), dataToSave);
 
           // Guardar comparativas para producto existente
           const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
@@ -536,7 +586,7 @@ export default function Inventory() {
 
           // Crear entrada si hay datos de proveedor
           if (proveedorData.cantidad > 0) {
-            await entradasAPI.create({
+            await apiClient.createEntrada({
               N_FACTURA: proveedorData.nFactura || 'N/A',
               PROVEEDOR: proveedorData.proveedor || 'N/A',
               FECHA: proveedorData.fecha || new Date().toISOString().split('T')[0],
@@ -552,7 +602,7 @@ export default function Inventory() {
           }
         } else {
           // Crear producto nuevo
-          await repuestosAPI.create(dataToSave);
+          await apiClient.createRepuesto(dataToSave);
 
           // Guardar comparativas DESPUÉS de crear el producto
           const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
@@ -566,7 +616,7 @@ export default function Inventory() {
         }
       } else {
         // Editar producto existente
-        await repuestosAPI.update(String(selectedProduct!.CB), dataToSave);
+        await apiClient.updateRepuesto(String(selectedProduct!.CB), dataToSave);
 
         // Guardar comparativas para producto editado
         const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
@@ -580,7 +630,7 @@ export default function Inventory() {
 
         // Crear entrada si hay entradas de stock
         if (entradaStock > 0 && proveedorData.cantidad > 0) {
-          await entradasAPI.create({
+          await apiClient.createEntrada({
             N_FACTURA: proveedorData.nFactura || 'N/A',
             PROVEEDOR: proveedorData.proveedor || 'N/A',
             FECHA: proveedorData.fecha || new Date().toISOString().split('T')[0],

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, X, Search, Lock, Eye, EyeOff } from 'lucide-react';
-import { usuariosAPI, Usuario, Rol } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
+import type { Usuario, Rol } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import Tooltip from './Tooltip';
+import { supabase } from '@/lib/supabase';
 
 export default function Configuracion() {
     const { usuario: currentUser, isAdmin } = useAuth();
@@ -85,7 +86,8 @@ export default function Configuracion() {
     const fetchUsuarios = async () => {
         try {
             setLoading(true);
-            const data = await usuariosAPI.getAll();
+            const response: any = await apiClient.getUsuarios();
+            const data = response.data || response || [];
             setUsuarios(data);
             setFilteredUsuarios(data);
         } catch (error) {
@@ -129,7 +131,7 @@ export default function Configuracion() {
         }
 
         try {
-            await usuariosAPI.delete(id);
+            await apiClient.deleteUsuario(id);
             await fetchUsuarios();
         } catch (error) {
             console.error('Error al eliminar usuario:', error);
@@ -142,7 +144,7 @@ export default function Configuracion() {
 
         try {
             if (modalMode === 'create') {
-                await usuariosAPI.create({
+                await apiClient.createUsuario({
                     nombre: formData.nombre,
                     email: formData.email,
                     password: formData.password,
@@ -150,7 +152,7 @@ export default function Configuracion() {
                 });
             } else if (selectedUsuario) {
                 // Actualizar datos básicos
-                await usuariosAPI.update(selectedUsuario.id_usuario, {
+                await apiClient.updateUsuario(selectedUsuario.id_usuario, {
                     nombre: formData.nombre,
                     email: formData.email,
                     rol: formData.rol,
@@ -158,7 +160,7 @@ export default function Configuracion() {
 
                 // Si se proporcionó una nueva contraseña, actualizarla
                 if (formData.password) {
-                    await usuariosAPI.updatePassword(selectedUsuario.id_usuario, formData.password);
+                    await apiClient.updatePassword(selectedUsuario.id_usuario, formData.password);
                 }
             }
 
