@@ -74,72 +74,19 @@ export default function Salidas() {
     }
   };
 
-  const getNextCI = (): number => {
-    // Obtener todos los CIs de las salidas
-    const cisSalidas = salidas
-      .map(s => s.ci || 0)
-      .filter(num => num > 0);
-
-    // Obtener todos los CIs de los productos
-    const cisProductos = productos
-      .map(p => {
-        if (!p.CI) return 0;
-        const numValue = parseInt(String(p.CI));
-        return isNaN(numValue) ? 0 : numValue;
-      })
-      .filter(num => num > 0);
-
-    // Combinar ambos arrays y obtener el máximo
-    const todosCIs = [...cisSalidas, ...cisProductos];
-
-    if (todosCIs.length === 0) return 100001;
-
-    return Math.max(...todosCIs) + 1;
-  };
-
-  const getNextCB = (): number => {
-    // Obtener todos los CBs de las salidas
-    const cbsSalidas = salidas
-      .map(s => s.cb || 0)
-      .filter(num => num > 0);
-
-    // Obtener todos los CBs de los productos
-    const cbsProductos = productos
-      .map(p => {
-        const numValue = parseInt(String(p.CB));
-        return isNaN(numValue) ? 0 : numValue;
-      })
-      .filter(num => num > 0);
-
-    // Combinar ambos arrays y obtener el máximo
-    const todosCBs = [...cbsSalidas, ...cbsProductos];
-
-    if (todosCBs.length === 0) return 100001;
-
-    return Math.max(...todosCBs) + 1;
-  };
-
   const handleCreate = () => {
     setModalMode('create');
 
-    // Generar número de factura automáticamente (último + 1)
     // Filtrar solo facturas con números razonables (< 100000) para evitar números de fecha u otros
     const facturasValidas = salidas
       .map(s => s.n_factura || 0)
       .filter(num => num > 0 && num < 100000);
 
-    const maxFactura = facturasValidas.length > 0
-      ? Math.max(...facturasValidas)
-      : 0;
-
-    const nextCI = getNextCI();
-    const nextCB = getNextCB();
-
     setFormData({
-      n_factura: maxFactura + 1,
+      n_factura: 0,
       fecha: parseInt(new Date().toISOString().slice(0, 10).replace(/-/g, '')),
-      cb: nextCB,
-      ci: nextCI,
+      cb: 0,
+      ci: 0,
       descripcion: '',
       valor: 0,
       cantidad: 0,
@@ -205,8 +152,18 @@ export default function Salidas() {
             return;
           }
 
+          // Auto-generar número de factura si es 0
+          const finalFormData = { ...formData };
+          if (!finalFormData.n_factura) {
+            const facturasValidas = salidas
+              .map(s => s.n_factura || 0)
+              .filter(num => num > 0 && num < 100000);
+            const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
+            finalFormData.n_factura = maxFactura + 1;
+          }
+
           // Crear la salida
-          await salidasAPI.create(formData);
+          await salidasAPI.create(finalFormData);
 
           // Actualizar el stock del producto (restar la cantidad)
           const nuevoStock = stockActual - cantidadSalida;
@@ -218,8 +175,17 @@ export default function Salidas() {
           // Recargar productos para reflejar el cambio
           await fetchProductos();
         } else {
+          // Auto-generar número de factura si es 0
+          const finalFormData = { ...formData };
+          if (!finalFormData.n_factura) {
+            const facturasValidas = salidas
+              .map(s => s.n_factura || 0)
+              .filter(num => num > 0 && num < 100000);
+            const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
+            finalFormData.n_factura = maxFactura + 1;
+          }
           // Si no existe el producto, crear la salida sin actualizar stock
-          await salidasAPI.create(formData);
+          await salidasAPI.create(finalFormData);
         }
       } else if (selectedSalida) {
         // En modo edición, solo actualizar la salida sin modificar stock
@@ -887,6 +853,7 @@ export default function Salidas() {
                     value={formData.n_factura || ''}
                     onChange={(e) => setFormData({ ...formData, n_factura: parseInt(e.target.value) || 0 })}
                     disabled={modalMode === 'edit'}
+                    placeholder="Auto (opcional)"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
                   />
                 </div>
@@ -938,8 +905,15 @@ export default function Salidas() {
                       }
                     }}
                     disabled={isVentaExterna}
+                    placeholder="Buscar CI"
+                    list="ci-list"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
                   />
+                  <datalist id="ci-list">
+                    {Array.from(new Set(productos.map(p => p.CI))).filter(Boolean).map((ci, idx) => (
+                      <option key={idx} value={String(ci)} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>
@@ -969,8 +943,10 @@ export default function Salidas() {
                         setFormData({ ...formData, cb: cbValue });
                       }
                     }}
-                    disabled={isVentaExterna}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                    disabled={true}
+                    readOnly
+                    placeholder="Auto"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100 bg-gray-50"
                   />
                 </div>
 
