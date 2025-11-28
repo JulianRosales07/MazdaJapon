@@ -136,65 +136,57 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   return (
     <div className="h-full bg-gray-50 overflow-auto">
       {/* Hero Section with Image */}
-      <div className="relative overflow-hidden bg-[#3a4556] text-white min-h-[400px]">
+      <div className="relative overflow-hidden bg-[#1a1a1a] text-white min-h-screen">
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
             src="https://www.mazdausa.com/siteassets/vehicles/2026/mazda3-sedan/01_vlp/001_hero/desktop/2026-m3-sedan-hero-desktop.jpg?w=1800"
             alt="Mazda Showroom"
-            className="w-full h-full object-cover opacity-40"
+            className="w-full h-full object-cover opacity-86"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#2a3042]/95 via-[#2a3042]/80 to-[#2a3042]/60"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/50"></div>
         </div>
-        <div className="relative z-10 px-8 py-12 max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="space-y-6">
-              <div className="inline-block px-5 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium border border-white/30">
-                Sistema de Gestión de Inventario
-              </div>
-              
-              <h1 className="text-5xl md:text-6xl font-bold leading-tight">
-                Bienvenido,
-                <span className="block border-b-4 border-white/50 pb-2 inline-block mt-2">
-                  {usuario?.nombre}
-                </span>
-              </h1>
-              
-              <p className="text-gray-300 text-lg leading-relaxed max-w-lg">
-                Gestiona tu inventario de repuestos automotrices de manera eficiente y profesional
-              </p>
-              
-              <div className="flex flex-wrap gap-4 pt-4">
-                <button
-                  onClick={() => onNavigate?.('inventory')}
-                  className="group px-8 py-3.5 bg-transparent text-white rounded-xl font-semibold hover:bg-white/10 transition-all duration-300 flex items-center gap-3 border-2 border-white/50 hover:border-white"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  Ver Inventario
-                </button>
-              </div>
-            </div>
+        
+        <div className="relative z-10 px-8 py-12 max-w-7xl mx-auto h-full flex flex-col justify-center">
+          {/* Header with Logo and Title */}
+          <div className="flex items-center gap-4 mb-20">
+            <img
+              src={logo}
+              alt="Mazda Logo"
+              className="w-20 h-20 object-contain filter brightness-110"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <h1 className="text-4xl md:text-5xl font-bold tracking-[0.4em] text-white" style={{ fontFamily: 'Quartan Std Bold' }}>
+              MAZDA JAPON
+            </h1>
+          </div>
+
+          {/* Welcome Section */}
+          <div className="space-y-8 max-w-2xl">
+            <h2 className="text-5xl md:text-6xl font-normal">
+              Bienvenido,
+            </h2>
+            <h3 className="text-5xl md:text-6xl font-normal">
+              {usuario?.nombre}
+            </h3>
             
-            {/* Right Content - Logo */}
-            <div className="flex justify-center md:justify-end">
-              <div className="relative group">
-                {/* Logo container with golden border */}
-                <div className="relative bg-white/5 backdrop-blur-md rounded-3xl p-16 border-2 border-amber-200/40 shadow-2xl hover:border-amber-200/60 transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl"></div>
-                  <img
-                    src={logo}
-                    alt="Mazda Logo"
-                    className="relative w-48 h-24 object-contain filter brightness-110 drop-shadow-2xl group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              </div>
+            <p className="text-blue-300 text-lg leading-relaxed max-w-lg pt-6">
+              Gestiona tu inventario de repuestos automotrices de manera eficiente y profesional
+            </p>
+            
+            <div className="flex flex-wrap gap-4 pt-8">
+              <button
+                onClick={() => onNavigate?.('inventory')}
+                className="group px-6 py-3 bg-transparent text-white rounded-md font-normal hover:bg-white/10 transition-all duration-300 flex items-center gap-3 border border-white/40 hover:border-white/60"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Ver Inventario
+              </button>
             </div>
           </div>
         </div>

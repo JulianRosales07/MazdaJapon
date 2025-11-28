@@ -248,6 +248,7 @@ export default function Configuracion() {
     }
 
     return (
+        
         <div className="p-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>

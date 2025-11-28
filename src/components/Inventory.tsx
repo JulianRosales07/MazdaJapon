@@ -85,10 +85,25 @@ export default function Inventory() {
 
   const fetchProveedores = async () => {
     try {
-      const data = await apiClient.getProveedores();
+      const response = await apiClient.getProveedores();
+      
+      // Handle response structure: {ok, message, data: [...]} or direct array
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.error('La respuesta de proveedores no es un array:', data);
+        setAvailableProveedores([]);
+        return;
+      }
+      
       setAvailableProveedores(data);
     } catch (error) {
       console.error('Error fetching proveedores:', error);
+      setAvailableProveedores([]);
     }
   };
 
@@ -365,6 +380,22 @@ export default function Inventory() {
     return String(maxCode + 1);
   };
 
+  const generateUniqueCB = (): string => {
+    // Generar un CB único usando timestamp para evitar duplicados
+    const timestamp = Date.now();
+    const lastDigits = timestamp.toString().slice(-6);
+    const baseCB = parseInt(lastDigits) + 100000;
+    
+    // Verificar que no exista en los productos cargados
+    const exists = products.some(p => String(p.CB) === String(baseCB));
+    if (exists) {
+      // Si existe, agregar un número aleatorio
+      return String(baseCB + Math.floor(Math.random() * 1000));
+    }
+    
+    return String(baseCB);
+  };
+
   const handleCreate = () => {
     setShowProductTypeDialog(true);
   };
@@ -374,7 +405,7 @@ export default function Inventory() {
     setShowProductTypeDialog(false);
 
     // Generar códigos automáticos
-    const nextCB = getNextCode('CB');
+    const nextCB = generateUniqueCB();
     const nextCI = getNextCode('CI');
 
     setFormData({
@@ -442,9 +473,10 @@ export default function Inventory() {
     setSearchCI(ci);
 
     if (!ci) {
-      // Si se borra el CI, limpiar el formulario
+      // Si se borra el CI, generar un nuevo CB y limpiar el formulario
+      const nextCB = generateUniqueCB();
       setFormData({
-        CB: '',
+        CB: nextCB,
         CI: null,
         PRODUCTO: '',
         TIPO: null,
@@ -478,9 +510,10 @@ export default function Inventory() {
       // Abrir automáticamente el selector de proveedores
       setShowProveedorSelector(true);
     } else {
-      // Si no se encuentra, limpiar los campos excepto CI
+      // Si no se encuentra, generar un nuevo CB y mantener el CI ingresado
+      const nextCB = generateUniqueCB();
       setFormData({
-        CB: '',
+        CB: nextCB,
         CI: ci,
         PRODUCTO: '',
         TIPO: null,
@@ -564,9 +597,21 @@ export default function Inventory() {
         ? stockActual
         : (modalMode === 'edit' ? stockActual + entradaStock - salidaStock : stockActual);
 
+      // Convertir campos a minúsculas para el backend
       const dataToSave = {
-        ...formData,
-        STOCK: nuevoStock,
+        cb: formData.CB,
+        ci: formData.CI,
+        producto: formData.PRODUCTO,
+        tipo: formData.TIPO,
+        modelo_especificacion: formData.MODELO_ESPECIFICACION,
+        referencia: formData.REFERENCIA,
+        marca: formData.MARCA,
+        existencias_iniciales: formData.EXISTENCIAS_INICIALES,
+        stock: nuevoStock,
+        precio: formData.PRECIO,
+        descripcion_larga: formData.DESCRIPCION_LARGA,
+        estante: formData.ESTANTE,
+        nivel: formData.NIVEL,
       };
 
       if (modalMode === 'create') {

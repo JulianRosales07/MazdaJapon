@@ -47,7 +47,7 @@ export default function ComparativaProveedores() {
 
       // Obtener todas las comparativas desde la API
       const response: any = await apiClient.getProductoProveedores();
-      const todasComparativas = response.data || response || [];
+      const todasComparativas = Array.isArray(response) ? response : (response.data || []);
       console.log('Comparativas cargadas:', todasComparativas.length);
 
       const productosPorCB = new Map<string, any[]>();
