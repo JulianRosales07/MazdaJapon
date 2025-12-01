@@ -3,6 +3,7 @@ import { Search, ArrowUpDown, Filter, RotateCcw, X } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import ProductSelect from './ProductSelect';
 import { useAuth } from '../contexts/AuthContext';
+import TableSkeleton from './TableSkeleton';
 
 // Tipos
 interface Repuesto {
@@ -427,8 +428,8 @@ export default function Entradas() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-gray-500">
-                    Cargando entradas...
+                  <td colSpan={8} className="p-0">
+                    <TableSkeleton rows={itemsPerPage} columns={8} />
                   </td>
                 </tr>
               ) : filteredEntradas.length === 0 ? (

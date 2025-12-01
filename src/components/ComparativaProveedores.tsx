@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Search, TrendingDown, Package, Building2 } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import type { Repuesto, ProductoProveedor } from '../lib/types';
+import ComparativaSkeletonTable from './ComparativaSkeletonTable';
 
 type ProductoConProveedores = {
   producto: Repuesto;
@@ -182,10 +183,7 @@ export default function ComparativaProveedores() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p className="text-gray-500">Cargando comparativas...</p>
-          </div>
+          <ComparativaSkeletonTable rows={itemsPerPage} maxProveedores={3} />
         ) : filteredProductos.length === 0 ? (
           <div className="text-center py-20">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />

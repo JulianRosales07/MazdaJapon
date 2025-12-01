@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Tag } from 'lucide-react';
 import { marcasAPI, Marca } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import TableSkeleton from './TableSkeleton';
 
 export default function Marcas() {
   const { permisos } = useAuth();
@@ -152,7 +153,7 @@ export default function Marcas() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-600">Cargando marcas...</div>
+          <TableSkeleton rows={itemsPerPage} columns={permisos.puedeGestionarMarcas ? 4 : 3} />
         ) : filteredMarcas.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">No se encontraron marcas</p>

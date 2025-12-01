@@ -3,6 +3,7 @@ import { Search, Plus, Edit2, Trash2, X, Building2, DollarSign, Hash } from 'luc
 import { apiClient } from '../lib/apiClient';
 import type { Proveedor, Repuesto } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
+import TableSkeleton from './TableSkeleton';
 
 export default function Proveedores() {
   const { permisos } = useAuth();
@@ -221,7 +222,7 @@ export default function Proveedores() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-600">Cargando proveedores...</div>
+          <TableSkeleton rows={itemsPerPage} columns={permisos.puedeGestionarProveedores ? 5 : 4} />
         ) : filteredProveedores.length === 0 ? (
           <div className="text-center py-12 text-gray-600">No se encontraron proveedores</div>
         ) : (

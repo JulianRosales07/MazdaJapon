@@ -4,6 +4,7 @@ import { apiClient } from '../lib/apiClient';
 import type { Repuesto, Salida } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import { salidasAPI } from '@/lib/api';
+import TableSkeleton from './TableSkeleton';
 
 export default function Salidas() {
   const { isAdmin } = useAuth();
@@ -456,7 +457,7 @@ export default function Salidas() {
         )}
 
         {loading ? (
-          <div className="text-center py-12 text-gray-600">Cargando salidas...</div>
+          <TableSkeleton rows={itemsPerPage} columns={isAdmin ? 7 : 6} />
         ) : filteredSalidas.length === 0 ? (
           <div className="text-center py-12 text-gray-600">
             {selectedMonth || searchTerm ? 'No se encontraron salidas con los filtros aplicados' : 'No se encontraron salidas'}
@@ -495,6 +496,7 @@ export default function Salidas() {
                   {currentSalidas.map((salida, index) => {
                     const valorNum = Number(salida.valor || 0);
                     const cantidadNum = Number(salida.cantidad || 0);
+                    const isDevolucion = cantidadNum < 0; // Las devoluciones tienen cantidad negativa
 
                     return (
                       <tr key={`${salida.n_factura}-${index}`} className="border-b border-gray-100 hover:bg-gray-50">
@@ -503,8 +505,12 @@ export default function Salidas() {
                         <td className="py-3 px-4 text-sm text-gray-900 font-medium">{salida.ci || '-'}</td>
                         <td className="py-3 px-4 text-sm text-gray-700">{salida.descripcion}</td>
                         <td className="py-3 px-4 text-sm">
-                          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
-                            {Math.abs(cantidadNum)}
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            isDevolucion 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {isDevolucion ? '+' : '-'}{Math.abs(cantidadNum)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900 whitespace-nowrap">

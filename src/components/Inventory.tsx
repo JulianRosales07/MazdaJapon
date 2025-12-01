@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Tooltip from './Tooltip';
 import CustomSelect from './CustomSelect';
 import BarcodeDisplay from './BarcodeDisplay';
+import TableSkeleton from './TableSkeleton';
 
 export default function Inventory() {
   const { isAdmin, permisos, usuario } = useAuth();
@@ -507,8 +508,8 @@ export default function Inventory() {
       // Cargar automáticamente los proveedores de este producto
       await cargarComparativaProveedores(String(foundProduct.CB));
 
-      // Abrir automáticamente el selector de proveedores
-      setShowProveedorSelector(true);
+      // NO abrir automáticamente el selector de proveedores
+      // El usuario puede abrirlo manualmente si lo necesita
     } else {
       // Si no se encuentra, generar un nuevo CB y mantener el CI ingresado
       const nextCB = generateUniqueCB();
@@ -996,9 +997,7 @@ export default function Inventory() {
             </div>
 
             {loading ? (
-              <div className="text-center py-12 text-gray-600">
-                Cargando productos...
-              </div>
+              <TableSkeleton rows={itemsPerPage} columns={permisos.puedeEditarInventario || permisos.puedeEliminarInventario ? 8 : 7} />
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-12 text-gray-600">
                 No se encontraron productos

@@ -14,6 +14,7 @@ interface Repuesto {
 import { DotPattern } from './ui/dot-pattern';
 import { cn } from '@/lib/utils';
 import logo from '../assets/image.png';
+import DashboardSkeleton from './DashboardSkeleton';
 
 interface DashboardProps {
   onNavigate?: (page: 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'configuracion' | 'exportar') => void;
@@ -192,16 +193,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      <div className="px-8 pb-8">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="flex flex-col items-center gap-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-              <div className="text-gray-600 font-medium">Cargando estadísticas...</div>
-            </div>
-          </div>
-        ) : (
-          <>
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <div className="px-8 pb-8">
             {/* Mazda Gallery Section */}
             <div className="mb-6 mt-6">
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
@@ -329,10 +324,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </div>
 
 
-          </>
-        )
-        }
-      </div >
-    </div >
+        </div>
+      )}
+    </div>
   );
 }
