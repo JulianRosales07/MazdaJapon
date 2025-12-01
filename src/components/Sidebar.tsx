@@ -174,7 +174,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         }`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">Mazda Japon</h2>
+          <h2 className="text-lg font-horizondrift text-gray-900">Mazda Japon</h2>
           <p className="text-xs text-gray-500">Sistema de Inventario</p>
         </div>
 

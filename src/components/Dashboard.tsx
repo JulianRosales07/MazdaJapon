@@ -162,8 +162,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <h1 className="text-4xl md:text-5xl font-bold tracking-[0.4em] text-white font-horizondrift">
-              MAZDA JAPON
+            <h1 className="text-4xl md:text-5xl font-horizondrift text-white " style={{ letterSpacing: '0.2em' }}>
+              Mazda Japon
             </h1>
           </div>
 
