@@ -46,9 +46,9 @@ export default function Entradas() {
   const [showDevolucionModal, setShowDevolucionModal] = useState(false);
   const [devolucionData, setDevolucionData] = useState({
     n_factura: '',
-    cantidad: 0,
-    motivo: '',
+    proveedor: '',
     observaciones: '',
+    saldo_favor: 0,
   });
   const [formData, setFormData] = useState({
     N_FACTURA: '',
@@ -750,51 +750,27 @@ export default function Entradas() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
-                // Buscar la entrada original
-                const entradaOriginal = entradas.find(e => e.N_FACTURA === devolucionData.n_factura);
-                if (!entradaOriginal) {
-                  alert('No se encontró la factura especificada');
-                  return;
-                }
-
-                // Buscar el producto en el inventario por CB
-                const producto = productos.find(p => String(p.CB) === String(entradaOriginal.CB));
-
-                // Verificar que hay suficiente stock para devolver
-                if (producto) {
-                  const stockActual = parseFloat(String(producto.STOCK)) || 0;
-                  const cantidadDevolucion = Math.abs(devolucionData.cantidad);
-
-                  if (stockActual < cantidadDevolucion) {
-                    alert(`Stock insuficiente para devolución. Stock actual: ${stockActual}, Cantidad a devolver: ${cantidadDevolucion}`);
-                    return;
-                  }
-                }
-
-                // Crear una nueva entrada con cantidad negativa para indicar devolución
-                const nuevaEntrada = {
-                  N_FACTURA: `DEV-${entradaOriginal.N_FACTURA}`,
-                  PROVEEDOR: entradaOriginal.PROVEEDOR,
+                // Crear registro de devolución
+                const nuevaDevolucion = {
+                  N_FACTURA: devolucionData.n_factura,
+                  PROVEEDOR: devolucionData.proveedor,
                   FECHA: new Date().toISOString().split('T')[0],
-                  CB: entradaOriginal.CB,
-                  CI: entradaOriginal.CI,
-                  DESCRIPCION: `DEVOLUCIÓN - ${entradaOriginal.DESCRIPCION}`,
-                  CANTIDAD: -Math.abs(devolucionData.cantidad), // Negativo para indicar devolución
-                  COSTO: entradaOriginal.COSTO,
-                  VALOR_VENTA: entradaOriginal.VALOR_VENTA,
+                  CB: '', // No aplica para devoluciones
+                  CI: '',
+                  DESCRIPCION: `DEVOLUCIÓN A PROVEEDOR - ${devolucionData.proveedor}`,
+                  CANTIDAD: 0, // No aplica cantidad de producto
+                  COSTO: devolucionData.saldo_favor,
+                  VALOR_VENTA: null,
                   SIIGO: 'NO',
-                  Columna1: `Motivo: ${devolucionData.motivo}. ${devolucionData.observaciones}`,
+                  Columna1: devolucionData.observaciones,
                 };
 
-                // Crear la entrada de devolución (el backend actualiza el stock automáticamente)
-                await apiClient.createEntrada(nuevaEntrada);
-
-                // Recargar productos para reflejar el cambio de stock
-                await fetchProductos();
+                // Crear la entrada de devolución
+                await apiClient.createEntrada(nuevaDevolucion);
 
                 await fetchEntradas();
                 setShowDevolucionModal(false);
-                setDevolucionData({ n_factura: '', cantidad: 0, motivo: '', observaciones: '' });
+                setDevolucionData({ n_factura: '', proveedor: '', observaciones: '', saldo_favor: 0 });
                 alert('Devolución registrada exitosamente');
               } catch (error) {
                 console.error('Error al registrar devolución:', error);
@@ -804,60 +780,64 @@ export default function Entradas() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    N° Factura Original *
+                    N° Factura *
                   </label>
                   <input
                     type="text"
                     required
                     value={devolucionData.n_factura}
                     onChange={(e) => setDevolucionData({ ...devolucionData, n_factura: e.target.value })}
-                    placeholder="Ingresa el número de factura"
+                    placeholder="Número de factura de devolución"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cantidad a Devolver *
+                    Proveedor *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={devolucionData.proveedor}
+                    onChange={(e) => setDevolucionData({ ...devolucionData, proveedor: e.target.value })}
+                    placeholder="Nombre del proveedor"
+                    list="proveedores-devolucion-list"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                  <datalist id="proveedores-devolucion-list">
+                    {proveedores.map((prov, idx) => (
+                      <option key={idx} value={prov} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Saldo a Favor *
                   </label>
                   <input
                     type="number"
                     required
-                    min="1"
-                    value={devolucionData.cantidad || ''}
-                    onChange={(e) => setDevolucionData({ ...devolucionData, cantidad: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    step="0.01"
+                    value={devolucionData.saldo_favor || ''}
+                    onChange={(e) => setDevolucionData({ ...devolucionData, saldo_favor: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Motivo de Devolución *
-                  </label>
-                  <select
-                    required
-                    value={devolucionData.motivo}
-                    onChange={(e) => setDevolucionData({ ...devolucionData, motivo: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                  >
-                    <option value="">Selecciona un motivo</option>
-                    <option value="Producto defectuoso">Producto defectuoso</option>
-                    <option value="Producto incorrecto">Producto incorrecto</option>
-                    <option value="Exceso de inventario">Exceso de inventario</option>
-                    <option value="Cambio de proveedor">Cambio de proveedor</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Observaciones
+                    Observaciones *
                   </label>
                   <textarea
+                    required
                     rows={3}
                     value={devolucionData.observaciones}
                     onChange={(e) => setDevolucionData({ ...devolucionData, observaciones: e.target.value })}
-                    placeholder="Detalles adicionales..."
+                    placeholder="Detalles de la devolución..."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none resize-none"
                   />
                 </div>

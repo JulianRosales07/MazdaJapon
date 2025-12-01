@@ -62,9 +62,21 @@ export default function Salidas() {
 
   // Normalizar salidas
   const normalizeSalida = (salida: any): Salida => {
+    // Convertir fecha de formato ISO (YYYY-MM-DD) a número (YYYYMMDD)
+    let fechaNum = 0;
+    const fechaValue = salida.fecha || salida.FECHA;
+    if (fechaValue) {
+      if (typeof fechaValue === 'string' && fechaValue.includes('-')) {
+        // Formato ISO: "2025-12-01" -> 20251201
+        fechaNum = parseInt(fechaValue.replace(/-/g, ''));
+      } else {
+        fechaNum = Number(fechaValue);
+      }
+    }
+
     return {
       n_factura: Number(salida.n_factura || salida.N_FACTURA || 0),
-      fecha: Number(salida.fecha || salida.FECHA || 0),
+      fecha: fechaNum,
       cb: Number(salida.cb || salida.CB || 0),
       ci: Number(salida.ci || salida.CI || 0),
       descripcion: String(salida.descripcion || salida.DESCRIPCION || ''),
@@ -110,7 +122,6 @@ export default function Salidas() {
       }
 
       const normalized = data.map(normalizeSalida);
-      console.log('Salidas cargadas:', normalized.length);
       setSalidas(normalized);
     } catch (error) {
       console.error('Error al cargar salidas:', error);
@@ -179,47 +190,64 @@ export default function Salidas() {
 
     try {
       if (modalMode === 'create') {
-        // Buscar el producto en el inventario por CB
-        const producto = productos.find(p => String(p.CB) === String(formData.cb));
+        // Auto-generar número de factura si es 0
+        const finalFormData = { ...formData };
+        if (!finalFormData.n_factura) {
+          const facturasValidas = salidas
+            .map(s => s.n_factura || 0)
+            .filter(num => num > 0 && num < 100000);
+          const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
+          finalFormData.n_factura = maxFactura + 1;
+        }
 
-        if (producto) {
+        // Si es venta externa, enviar cb y ci como null (productos externos al inventario)
+        if (isVentaExterna) {
+          // Para ventas externas, no se requiere CB ni CI
+          const ventaExternaData = {
+            n_factura: finalFormData.n_factura,
+            fecha: finalFormData.fecha,
+            cb: null,
+            ci: null,
+            descripcion: finalFormData.descripcion,
+            valor: finalFormData.valor,
+            cantidad: finalFormData.cantidad,
+            columna1: finalFormData.columna1,
+          };
+          
+          await apiClient.createSalida(ventaExternaData);
+          setShowModal(false);
+          await fetchSalidas();
+          return;
+        } else {
+          // Validar que el producto existe
+          if (!finalFormData.cb || finalFormData.cb === 0) {
+            alert('Debe seleccionar un producto válido ingresando el CI');
+            return;
+          }
+
+          // Buscar el producto en el inventario por CB
+          const producto = productos.find(p => String(p.CB) === String(finalFormData.cb));
+
+          if (!producto) {
+            alert('El producto seleccionado no existe en el inventario. Use "Venta externa" para productos no registrados.');
+            return;
+          }
+
           // Verificar que hay suficiente stock
           const stockActual = parseFloat(String(producto.STOCK)) || 0;
-          const cantidadSalida = Math.abs(formData.cantidad);
+          const cantidadSalida = Math.abs(finalFormData.cantidad);
 
           if (stockActual < cantidadSalida) {
             alert(`Stock insuficiente. Stock actual: ${stockActual}, Cantidad solicitada: ${cantidadSalida}`);
             return;
           }
-
-          // Auto-generar número de factura si es 0
-          const finalFormData = { ...formData };
-          if (!finalFormData.n_factura) {
-            const facturasValidas = salidas
-              .map(s => s.n_factura || 0)
-              .filter(num => num > 0 && num < 100000);
-            const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
-            finalFormData.n_factura = maxFactura + 1;
-          }
-
-          // Crear la salida (el backend actualiza el stock automáticamente)
-          await apiClient.createSalida(finalFormData);
-
-          // Recargar productos para reflejar el cambio de stock
-          await fetchProductos();
-        } else {
-          // Auto-generar número de factura si es 0
-          const finalFormData = { ...formData };
-          if (!finalFormData.n_factura) {
-            const facturasValidas = salidas
-              .map(s => s.n_factura || 0)
-              .filter(num => num > 0 && num < 100000);
-            const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
-            finalFormData.n_factura = maxFactura + 1;
-          }
-          // Si no existe el producto, crear la salida sin actualizar stock
-          await apiClient.createSalida(finalFormData);
         }
+
+        // Crear la salida
+        await apiClient.createSalida(finalFormData);
+
+        // Recargar productos para reflejar el cambio de stock
+        await fetchProductos();
       } else if (selectedSalida) {
         // En modo edición, solo actualizar la salida sin modificar stock
         await apiClient.updateSalida(selectedSalida.n_factura, formData);
@@ -229,7 +257,7 @@ export default function Salidas() {
       await fetchSalidas();
     } catch (error) {
       console.error('Error al guardar salida:', error);
-      alert('Error al guardar la salida');
+      alert('Error al guardar la salida. Verifique que el producto existe en el inventario.');
     }
   };
 
@@ -240,7 +268,23 @@ export default function Salidas() {
       if (!salida.fecha) return;
 
       try {
-        const date = new Date(salida.fecha);
+        let date: Date;
+        const str = String(salida.fecha);
+        
+        // Si es formato ISO (YYYY-MM-DD)
+        if (str.includes('-')) {
+          date = new Date(str);
+        }
+        // Si es un número de 8 dígitos (YYYYMMDD)
+        else if (/^\d{8}$/.test(str)) {
+          const year = parseInt(str.slice(0, 4));
+          const month = parseInt(str.slice(4, 6)) - 1;
+          const day = parseInt(str.slice(6, 8));
+          date = new Date(year, month, day);
+        } else {
+          date = new Date(salida.fecha);
+        }
+
         if (!isNaN(date.getTime())) {
           const year = date.getFullYear();
           const month = date.getMonth() + 1; // 1-12
@@ -268,11 +312,30 @@ export default function Salidas() {
       filtered = filtered.filter(salida => {
         if (!salida.fecha) return false;
         try {
-          const date = new Date(salida.fecha);
-          const year = date.getFullYear();
-          const month = date.getMonth() + 1;
-          const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
-          return yearMonth === selectedMonth;
+          let date: Date;
+          const str = String(salida.fecha);
+          
+          // Si es formato ISO (YYYY-MM-DD)
+          if (str.includes('-')) {
+            date = new Date(str);
+          }
+          // Si es un número de 8 dígitos (YYYYMMDD)
+          else if (/^\d{8}$/.test(str)) {
+            const year = parseInt(str.slice(0, 4));
+            const month = parseInt(str.slice(4, 6)) - 1;
+            const day = parseInt(str.slice(6, 8));
+            date = new Date(year, month, day);
+          } else {
+            date = new Date(salida.fecha);
+          }
+
+          if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+            return yearMonth === selectedMonth;
+          }
+          return false;
         } catch {
           return false;
         }
@@ -281,8 +344,35 @@ export default function Salidas() {
 
     // Luego ordenar por fecha
     const sorted = [...filtered].sort((a, b) => {
-      const fechaA = a.fecha ? new Date(a.fecha).getTime() : 0;
-      const fechaB = b.fecha ? new Date(b.fecha).getTime() : 0;
+      const getFechaTime = (fecha: number | string | null | undefined) => {
+        if (!fecha) return 0;
+        
+        try {
+          let date: Date;
+          const str = String(fecha);
+          
+          // Si es formato ISO (YYYY-MM-DD)
+          if (str.includes('-')) {
+            date = new Date(str);
+          }
+          // Si es un número de 8 dígitos (YYYYMMDD)
+          else if (/^\d{8}$/.test(str)) {
+            const year = parseInt(str.slice(0, 4));
+            const month = parseInt(str.slice(4, 6)) - 1;
+            const day = parseInt(str.slice(6, 8));
+            date = new Date(year, month, day);
+          } else {
+            date = new Date(fecha);
+          }
+          
+          return isNaN(date.getTime()) ? 0 : date.getTime();
+        } catch {
+          return 0;
+        }
+      };
+
+      const fechaA = getFechaTime(a.fecha);
+      const fechaB = getFechaTime(b.fecha);
 
       const comparison = fechaB - fechaA;
       return sortOrder === 'desc' ? comparison : -comparison;
@@ -304,27 +394,40 @@ export default function Salidas() {
   const formatFecha = (fecha: number | string | null | undefined) => {
     if (!fecha) return '-';
 
-    const str = fecha.toString();
-
-    // Si es formato ISO (contiene 'T' o '-')
-    if (str.includes('T') || str.includes('-')) {
-      try {
-        const date = new Date(str);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-      } catch {
-        return str;
+    try {
+      let date: Date;
+      const str = String(fecha);
+      
+      // Si es formato ISO (YYYY-MM-DD)
+      if (str.includes('-')) {
+        date = new Date(str);
       }
-    }
+      // Si es un número de 8 dígitos (YYYYMMDD)
+      else if (/^\d{8}$/.test(str)) {
+        const year = parseInt(str.slice(0, 4));
+        const month = parseInt(str.slice(4, 6)) - 1; // Los meses en JS van de 0-11
+        const day = parseInt(str.slice(6, 8));
+        date = new Date(year, month, day);
+      }
+      // Intentar parsear directamente
+      else {
+        date = new Date(fecha);
+      }
 
-    // Si es formato numérico AAAAMMDD
-    if (str.length === 8) {
-      return `${str.slice(6, 8)}/${str.slice(4, 6)}/${str.slice(0, 4)}`;
-    }
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        return String(fecha);
+      }
 
-    return str;
+      // Formatear como DD/MM/YYYY
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error('Error formateando fecha:', fecha, error);
+      return String(fecha);
+    }
   };
 
   const formatPrecio = (valor: number) => {
@@ -880,159 +983,269 @@ export default function Salidas() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    N° Factura *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.n_factura || ''}
-                    onChange={(e) => setFormData({ ...formData, n_factura: parseInt(e.target.value) || 0 })}
-                    disabled={modalMode === 'edit'}
-                    placeholder="Auto (opcional)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                  />
+              {modalMode === 'edit' ? (
+                // Modo Ver: Solo lectura con diseño mejorado
+                <div className="space-y-6">
+                  {/* Información Principal de la Salida */}
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                      </svg>
+                      Información de la Salida
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                          N° Factura
+                        </label>
+                        <p className="text-xl font-bold text-gray-900">{formData.n_factura}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                          Fecha
+                        </label>
+                        <p className="text-xl font-bold text-gray-900">{formatFecha(formData.fecha)}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                          Cantidad
+                        </label>
+                        <p className={`text-xl font-bold ${formData.cantidad < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formData.cantidad < 0 ? '+' : '-'}{Math.abs(formData.cantidad)} unidades
+                        </p>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                          Descripción
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900">{formData.descripcion}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                          Valor Total
+                        </label>
+                        <p className="text-xl font-bold text-gray-900">${formatPrecio(formData.valor)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Información del Producto */}
+                  {formData.cb > 0 && (() => {
+                    const productoEncontrado = productos.find(p => String(p.CB) === String(formData.cb));
+                    return productoEncontrado ? (
+                      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                          </svg>
+                          Información del Producto
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Producto</label>
+                            <p className="text-base font-semibold text-gray-900">{productoEncontrado.PRODUCTO}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Marca</label>
+                            <p className="text-base font-semibold text-gray-900">{productoEncontrado.MARCA || '-'}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Stock Disponible</label>
+                            <p className={`text-base font-bold ${Number(productoEncontrado.STOCK) < 10 ? 'text-red-600' : 'text-green-600'}`}>
+                              {productoEncontrado.STOCK} unidades
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">CB</label>
+                            <p className="text-base font-mono font-semibold text-gray-900">{formData.cb}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">CI</label>
+                            <p className="text-base font-mono font-semibold text-gray-900">{formData.ci || '-'}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Precio Unitario</label>
+                            <p className="text-base font-bold text-gray-900">${Number(productoEncontrado.PRECIO).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4">Códigos del Producto</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">CB</label>
+                            <p className="text-lg font-mono font-semibold text-gray-900">{formData.cb || '-'}</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">CI</label>
+                            <p className="text-lg font-mono font-semibold text-gray-900">{formData.ci || '-'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
+              ) : (
+                // Modo Crear: Formulario editable
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      N° Factura
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.n_factura || ''}
+                      onChange={(e) => setFormData({ ...formData, n_factura: parseInt(e.target.value) || 0 })}
+                      placeholder="Se genera automáticamente"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Dejar vacío para auto-generar</p>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.fecha ? new Date(formData.fecha.toString().slice(0, 4) + '-' + formData.fecha.toString().slice(4, 6) + '-' + formData.fecha.toString().slice(6, 8)).toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const dateStr = e.target.value.replace(/-/g, '');
-                      setFormData({ ...formData, fecha: parseInt(dateStr) });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fecha *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.fecha ? new Date(formData.fecha.toString().slice(0, 4) + '-' + formData.fecha.toString().slice(4, 6) + '-' + formData.fecha.toString().slice(6, 8)).toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const dateStr = e.target.value.replace(/-/g, '');
+                        setFormData({ ...formData, fecha: parseInt(dateStr) });
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CI {!isVentaExterna && '*'}
-                  </label>
-                  <input
-                    type="number"
-                    required={!isVentaExterna}
-                    value={formData.ci || ''}
-                    onChange={(e) => {
-                      const ciValue = parseInt(e.target.value) || 0;
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CI {!isVentaExterna && '*'}
+                    </label>
+                    <input
+                      type="number"
+                      required={!isVentaExterna}
+                      value={formData.ci || ''}
+                      onChange={(e) => {
+                        const ciValue = parseInt(e.target.value) || 0;
 
-                      // Buscar producto por CI
-                      const productoEncontrado = productos.find(p => {
-                        const productCI = parseInt(String(p.CI));
-                        return !isNaN(productCI) && productCI === ciValue;
-                      });
-
-                      if (productoEncontrado) {
-                        // Autocompletar todos los campos
-                        setFormData({
-                          ...formData,
-                          ci: ciValue,
-                          cb: parseInt(String(productoEncontrado.CB)) || 0,
-                          descripcion: productoEncontrado.PRODUCTO || '',
-                          valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
+                        // Buscar producto por CI
+                        const productoEncontrado = productos.find(p => {
+                          const productCI = parseInt(String(p.CI));
+                          return !isNaN(productCI) && productCI === ciValue;
                         });
-                      } else {
-                        setFormData({ ...formData, ci: ciValue });
-                      }
-                    }}
-                    disabled={isVentaExterna}
-                    placeholder="Buscar CI"
-                    list="ci-list"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                  />
-                  <datalist id="ci-list">
-                    {Array.from(new Set(productos.map(p => p.CI))).filter(Boolean).map((ci, idx) => (
-                      <option key={idx} value={String(ci)} />
-                    ))}
-                  </datalist>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CB {!isVentaExterna && '*'}
-                  </label>
-                  <input
-                    type="number"
-                    required={!isVentaExterna}
-                    value={formData.cb || ''}
-                    onChange={(e) => {
-                      const cbValue = parseInt(e.target.value) || 0;
+                        if (productoEncontrado) {
+                          // Autocompletar todos los campos
+                          setFormData({
+                            ...formData,
+                            ci: ciValue,
+                            cb: parseInt(String(productoEncontrado.CB)) || 0,
+                            descripcion: productoEncontrado.PRODUCTO || '',
+                            valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
+                          });
+                        } else {
+                          setFormData({ ...formData, ci: ciValue });
+                        }
+                      }}
+                      disabled={isVentaExterna}
+                      placeholder="Buscar CI"
+                      list="ci-list"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                    />
+                    <datalist id="ci-list">
+                      {Array.from(new Set(productos.map(p => p.CI))).filter(Boolean).map((ci, idx) => (
+                        <option key={idx} value={String(ci)} />
+                      ))}
+                    </datalist>
+                  </div>
 
-                      // Buscar producto por CB
-                      const productoEncontrado = productos.find(p => String(p.CB) === String(cbValue));
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CB {!isVentaExterna && '*'}
+                    </label>
+                    <input
+                      type="number"
+                      required={!isVentaExterna}
+                      value={formData.cb || ''}
+                      onChange={(e) => {
+                        const cbValue = parseInt(e.target.value) || 0;
 
-                      if (productoEncontrado) {
-                        // Autocompletar todos los campos
-                        setFormData({
-                          ...formData,
-                          cb: cbValue,
-                          ci: parseInt(String(productoEncontrado.CI)) || 0,
-                          descripcion: productoEncontrado.PRODUCTO || '',
-                          valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
-                        });
-                      } else {
-                        setFormData({ ...formData, cb: cbValue });
-                      }
-                    }}
-                    disabled={true}
-                    readOnly
-                    placeholder="Auto"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100 bg-gray-50"
-                  />
-                </div>
+                        // Buscar producto por CB
+                        const productoEncontrado = productos.find(p => String(p.CB) === String(cbValue));
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Descripción {!isVentaExterna && '*'}
-                  </label>
-                  <input
-                    type="text"
-                    required={!isVentaExterna}
-                    value={formData.descripcion}
-                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    disabled={isVentaExterna}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                  />
-                </div>
+                        if (productoEncontrado) {
+                          // Autocompletar todos los campos
+                          setFormData({
+                            ...formData,
+                            cb: cbValue,
+                            ci: parseInt(String(productoEncontrado.CI)) || 0,
+                            descripcion: productoEncontrado.PRODUCTO || '',
+                            valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
+                          });
+                        } else {
+                          setFormData({ ...formData, cb: cbValue });
+                        }
+                      }}
+                      disabled={true}
+                      readOnly
+                      placeholder="Auto"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100 bg-gray-50"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor {!isVentaExterna && '*'}
-                  </label>
-                  <input
-                    type="number"
-                    required={!isVentaExterna}
-                    step="0.01"
-                    value={formData.valor || ''}
-                    onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
-                    disabled={isVentaExterna}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                  />
-                </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Descripción {!isVentaExterna && '*'}
+                    </label>
+                    <input
+                      type="text"
+                      required={!isVentaExterna}
+                      value={formData.descripcion}
+                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                      disabled={isVentaExterna}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cantidad {!isVentaExterna && '*'}
-                  </label>
-                  <input
-                    type="number"
-                    required={!isVentaExterna}
-                    value={formData.cantidad || ''}
-                    onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
-                    disabled={isVentaExterna}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Valor {!isVentaExterna && '*'}
+                    </label>
+                    <input
+                      type="number"
+                      required={!isVentaExterna}
+                      step="0.01"
+                      value={formData.valor || ''}
+                      onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
+                      disabled={isVentaExterna}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                    />
+                  </div>
 
-                {/* Información del Producto Encontrado */}
-                {!isVentaExterna && (formData.cb > 0 || formData.ci > 0) && (() => {
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cantidad {!isVentaExterna && '*'}
+                    </label>
+                    <input
+                      type="number"
+                      required={!isVentaExterna}
+                      value={formData.cantidad || ''}
+                      onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
+                      disabled={isVentaExterna}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                    />
+                  </div>
+
+                  {/* Información del Producto Encontrado */}
+                  {!isVentaExterna && (formData.cb > 0 || formData.ci > 0) && (() => {
                   const productoEncontrado = productos.find(p =>
                     String(p.CB) === String(formData.cb) ||
                     (formData.ci > 0 && parseInt(String(p.CI)) === formData.ci)
@@ -1083,98 +1296,111 @@ export default function Salidas() {
                         </div>
                       </div>
                     </div>
-                  ) : null;
-                })()}
+                    ) : null;
+                  })()}
 
-                {/* Checkbox de Venta Externa */}
-                <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isVentaExterna}
-                      onChange={(e) => {
-                        setIsVentaExterna(e.target.checked);
-                        if (e.target.checked) {
-                          // Limpiar campos cuando se activa venta externa
-                          setFormData({
-                            ...formData,
-                            ci: 0,
-                            cb: 0,
-                            descripcion: '',
-                            valor: 0,
-                            cantidad: 0,
-                          });
-                        }
-                      }}
-                      className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-2 focus:ring-gray-900"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Venta externa</span>
-                  </label>
+                  {/* Checkbox de Venta Externa */}
+                  <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isVentaExterna}
+                        onChange={(e) => {
+                          setIsVentaExterna(e.target.checked);
+                          if (e.target.checked) {
+                            // Limpiar campos cuando se activa venta externa
+                            setFormData({
+                              ...formData,
+                              ci: 0,
+                              cb: 0,
+                              descripcion: '',
+                              valor: 0,
+                              cantidad: 0,
+                            });
+                          }
+                        }}
+                        className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-2 focus:ring-gray-900"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Venta externa</span>
+                    </label>
+                  </div>
+
+                  {/* Campos de Venta Externa */}
+                  {isVentaExterna && (
+                    <>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Descripción *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.descripcion}
+                          onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                          placeholder="Descripción del producto vendido"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Valor *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          step="0.01"
+                          value={formData.valor || ''}
+                          onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
+                          placeholder="0.00"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Cantidad *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          value={formData.cantidad || ''}
+                          onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
+                          placeholder="0"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
-
-                {/* Campos de Venta Externa */}
-                {isVentaExterna && (
-                  <>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Descripción *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.descripcion}
-                        onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                        placeholder="Descripción del producto vendido"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Valor *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        step="0.01"
-                        value={formData.valor || ''}
-                        onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cantidad *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.cantidad || ''}
-                        onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
-                        placeholder="0"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
+              )}
 
               <div className="flex gap-3 mt-6">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
-                >
-                  {modalMode === 'create' ? 'Crear Salida' : 'Guardar Cambios'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
-                >
-                  Cancelar
-                </button>
+                {modalMode === 'create' ? (
+                  <>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
+                    >
+                      Crear Salida
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
+                  >
+                    Cerrar
+                  </button>
+                )}
               </div>
             </form>
           </div>
