@@ -197,6 +197,8 @@ class ApiClient {
   }
 
   async createEntrada(data: any) {
+    console.log('createEntrada - Datos a enviar:', data);
+    console.log('createEntrada - JSON stringified:', JSON.stringify(data));
     return this.request<any>('/entradas', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -309,6 +311,8 @@ class ApiClient {
   }
 
   async createProductoProveedor(data: any) {
+    console.log('createProductoProveedor - Datos a enviar:', data);
+    console.log('createProductoProveedor - JSON stringified:', JSON.stringify(data));
     return this.request<any>('/producto-proveedor', {
       method: 'POST',
       body: JSON.stringify(data),

@@ -110,7 +110,23 @@ export default function Inventory() {
 
   const cargarComparativaProveedores = async (productoCB: string) => {
     try {
-      const comparativas = await apiClient.getProveedoresByProducto(productoCB);
+      console.log('Cargando comparativas para producto:', productoCB);
+      const response = await apiClient.getProveedoresByProducto(productoCB);
+      console.log('Respuesta de comparativas:', response);
+      
+      // Manejar estructura de respuesta: {ok, message, data: [...]} o array directo
+      let comparativas = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        comparativas = (response as any).data;
+      }
+      
+      // Verificar que comparativas sea un array
+      if (!Array.isArray(comparativas)) {
+        console.error('La respuesta de comparativas no es un array:', comparativas);
+        comparativas = [];
+      }
+      
+      console.log('Comparativas procesadas:', comparativas);
 
       // Resetear los proveedores
       resetProveedoresSelector();
@@ -163,25 +179,79 @@ export default function Inventory() {
 
   const guardarComparativaProveedores = async (productoCB: string) => {
     try {
+      // Validar que productoCB no esté vacío
+      if (!productoCB || productoCB.trim() === '') {
+        throw new Error('El código del producto es requerido');
+      }
+
       const proveedoresAGuardar = [
         { ...proveedor1, key: 'proveedor1' },
         { ...proveedor2, key: 'proveedor2' },
         { ...proveedor3, key: 'proveedor3' },
-      ].filter(p => p.id !== null);
+      ].filter(p => p.id !== null && p.id !== undefined);
 
       if (proveedoresAGuardar.length === 0) {
         throw new Error('No hay proveedores para guardar');
       }
 
+      // Obtener las relaciones existentes
+      const relacionesExistentes = await apiClient.getProveedoresByProducto(productoCB);
+      let existentes = relacionesExistentes;
+      if (relacionesExistentes && typeof relacionesExistentes === 'object' && 'data' in relacionesExistentes) {
+        existentes = (relacionesExistentes as any).data;
+      }
+      if (!Array.isArray(existentes)) {
+        existentes = [];
+      }
+
       // Guardar cada proveedor
       for (const prov of proveedoresAGuardar) {
-        await apiClient.createProductoProveedor({
-          producto_cb: productoCB,
-          proveedor_id: prov.id!,
-          precio_proveedor: prov.precio || 0,
-          es_proveedor_principal: selectedProveedor === prov.id,
-          activo: true,
-        });
+        // Validar que los datos requeridos estén presentes
+        if (!prov.id) {
+          console.warn('Proveedor sin ID, saltando:', prov);
+          continue;
+        }
+
+        const precioProveedor = Number(prov.precio) || 0;
+        
+        // Validar que el precio sea mayor a 0 (el backend rechaza precio = 0)
+        if (precioProveedor <= 0) {
+          console.warn(`Proveedor ${prov.nombre} tiene precio 0 o inválido, saltando`);
+          continue;
+        }
+        
+        // Verificar si ya existe esta relación
+        const relacionExistente = existentes.find((r: any) => r.proveedor_id === prov.id);
+        
+        if (relacionExistente) {
+          // Actualizar la relación existente
+          console.log('Actualizando proveedor existente:', {
+            id: relacionExistente.id_producto_proveedor,
+            proveedor_id: prov.id,
+            precio_proveedor: precioProveedor,
+          });
+          
+          await apiClient.updateProductoProveedor(relacionExistente.id_producto_proveedor, {
+            precio_proveedor: precioProveedor,
+            es_proveedor_principal: selectedProveedor === prov.id,
+            fecha_ultima_compra: null,
+          });
+        } else {
+          // Crear nueva relación
+          console.log('Creando nuevo proveedor:', {
+            producto_cb: productoCB,
+            proveedor_id: prov.id,
+            precio_proveedor: precioProveedor,
+          });
+
+          await apiClient.createProductoProveedor({
+            producto_cb: productoCB,
+            proveedor_id: prov.id,
+            precio_proveedor: precioProveedor,
+            es_proveedor_principal: selectedProveedor === prov.id,
+            fecha_ultima_compra: null,
+          });
+        }
       }
 
       console.log(`✓ Guardadas ${proveedoresAGuardar.length} comparativas para el producto ${productoCB}`);
@@ -632,19 +702,27 @@ export default function Inventory() {
 
           // Crear entrada si hay datos de proveedor
           if (proveedorData.cantidad > 0) {
-            await apiClient.createEntrada({
-              N_FACTURA: proveedorData.nFactura || 'N/A',
-              PROVEEDOR: proveedorData.proveedor || 'N/A',
-              FECHA: proveedorData.fecha || new Date().toISOString().split('T')[0],
-              CB: String(formData.CB),
-              CI: formData.CI ? String(formData.CI) : null,
-              DESCRIPCION: formData.PRODUCTO,
-              CANTIDAD: proveedorData.cantidad,
-              COSTO: proveedorData.costo,
-              VALOR_VENTA: formData.PRECIO,
-              SIIGO: null,
-              Columna1: null,
-            });
+            // Generar número de factura si no existe
+            const nFactura = proveedorData.nFactura && proveedorData.nFactura.trim() !== '' 
+              ? proveedorData.nFactura 
+              : `FAC-${Date.now()}`;
+            
+            const entradaData = {
+              n_factura: nFactura,
+              proveedor: proveedorData.proveedor || 'N/A',
+              fecha: proveedorData.fecha || new Date().toISOString().split('T')[0],
+              cb: String(formData.CB),
+              ci: formData.CI ? String(formData.CI) : null,
+              descripcion: formData.PRODUCTO,
+              cantidad: proveedorData.cantidad,
+              costo: proveedorData.costo,
+              valor_venta: formData.PRECIO,
+              siigo: null,
+              columna1: null,
+            };
+            
+            console.log('Creando entrada con datos:', entradaData);
+            await apiClient.createEntrada(entradaData);
           }
         } else {
           // Crear producto nuevo
@@ -676,18 +754,23 @@ export default function Inventory() {
 
         // Crear entrada si hay entradas de stock
         if (entradaStock > 0 && proveedorData.cantidad > 0) {
+          // Generar número de factura si no existe
+          const nFactura = proveedorData.nFactura && proveedorData.nFactura.trim() !== '' 
+            ? proveedorData.nFactura 
+            : `FAC-${Date.now()}`;
+          
           await apiClient.createEntrada({
-            N_FACTURA: proveedorData.nFactura || 'N/A',
-            PROVEEDOR: proveedorData.proveedor || 'N/A',
-            FECHA: proveedorData.fecha || new Date().toISOString().split('T')[0],
-            CB: String(formData.CB),
-            CI: formData.CI ? String(formData.CI) : null,
-            DESCRIPCION: formData.PRODUCTO,
-            CANTIDAD: proveedorData.cantidad,
-            COSTO: proveedorData.costo,
-            VALOR_VENTA: formData.PRECIO,
-            SIIGO: null,
-            Columna1: null,
+            n_factura: nFactura,
+            proveedor: proveedorData.proveedor || 'N/A',
+            fecha: proveedorData.fecha || new Date().toISOString().split('T')[0],
+            cb: String(formData.CB),
+            ci: formData.CI ? String(formData.CI) : null,
+            descripcion: formData.PRODUCTO,
+            cantidad: proveedorData.cantidad,
+            costo: proveedorData.costo,
+            valor_venta: formData.PRECIO,
+            siigo: null,
+            columna1: null,
           });
         }
       }
@@ -1929,16 +2012,17 @@ export default function Inventory() {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Precio
+                                Precio <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="number"
-                                min="0"
+                                min="0.01"
                                 step="0.01"
-                                value={proveedor1.precio}
+                                value={proveedor1.precio || ''}
                                 onChange={(e) => setProveedor1({ ...proveedor1, precio: parseFloat(e.target.value) || 0 })}
-                                placeholder="0.00"
+                                placeholder="Ingrese precio mayor a 0"
                                 className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                                required
                               />
                             </div>
                           </div>
@@ -2002,16 +2086,17 @@ export default function Inventory() {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Precio
+                                Precio <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="number"
-                                min="0"
+                                min="0.01"
                                 step="0.01"
-                                value={proveedor2.precio}
+                                value={proveedor2.precio || ''}
                                 onChange={(e) => setProveedor2({ ...proveedor2, precio: parseFloat(e.target.value) || 0 })}
-                                placeholder="0.00"
+                                placeholder="Ingrese precio mayor a 0"
                                 className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                                required
                               />
                             </div>
                           </div>
@@ -2075,16 +2160,17 @@ export default function Inventory() {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Precio
+                                Precio <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="number"
-                                min="0"
+                                min="0.01"
                                 step="0.01"
-                                value={proveedor3.precio}
+                                value={proveedor3.precio || ''}
                                 onChange={(e) => setProveedor3({ ...proveedor3, precio: parseFloat(e.target.value) || 0 })}
-                                placeholder="0.00"
+                                placeholder="Ingrese precio mayor a 0"
                                 className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                                required
                               />
                             </div>
                           </div>
@@ -2127,9 +2213,14 @@ export default function Inventory() {
                           await guardarComparativaProveedores(String(formData.CB));
                           alert('Comparativas guardadas correctamente');
                           setShowProveedorSelector(false);
-                        } catch (error) {
+                        } catch (error: any) {
                           console.error('Error al guardar comparativas:', error);
-                          alert('Error al guardar las comparativas de proveedores');
+                          const errorMsg = error.message || 'Error desconocido';
+                          if (errorMsg.includes('requeridos')) {
+                            alert('⚠️ Error del Backend\n\nEl servidor no está procesando correctamente las peticiones POST.\n\nProblema técnico: El middleware express.json() no está configurado en el endpoint /api/producto-proveedor\n\nLos proveedores se han configurado localmente pero NO se guardaron en la base de datos.\n\nContacta al desarrollador del backend para resolver este problema.');
+                          } else {
+                            alert(`Error al guardar las comparativas: ${errorMsg}`);
+                          }
                         }
                       } else {
                         // Para productos nuevos, solo cerrar el modal
