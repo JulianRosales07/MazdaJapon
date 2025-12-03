@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
-import type { Repuesto, Proveedor, ProductoProveedor } from '../lib/types';
+import type { Repuesto, Proveedor } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import Tooltip from './Tooltip';
 import CustomSelect from './CustomSelect';
-import BarcodeDisplay from './BarcodeDisplay';
 import TableSkeleton from './TableSkeleton';
+import Toast from './Toast';
 
 export default function Inventory() {
   const { isAdmin, permisos, usuario } = useAuth();
@@ -27,6 +27,8 @@ export default function Inventory() {
   const [productToDelete, setProductToDelete] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [entradaStock, setEntradaStock] = useState(0);
   const [salidaStock, setSalidaStock] = useState(0);
@@ -268,6 +270,28 @@ export default function Inventory() {
     setSelectedProveedor(null);
   };
 
+  const handleCopyProduct = (product: Repuesto) => {
+    // Formato: Producto / Tipo / Marca / Modelo / Referencia
+    const parts = [
+      product.PRODUCTO || '',
+      product.TIPO || '',
+      product.MARCA || '',
+      product.MODELO_ESPECIFICACION || '',
+      product.REFERENCIA || ''
+    ];
+    
+    const formattedText = parts.join(' / ');
+    
+    navigator.clipboard.writeText(formattedText).then(() => {
+      setToastMessage('Producto copiado al portapapeles');
+      setShowToast(true);
+    }).catch((err) => {
+      console.error('Error al copiar:', err);
+      setToastMessage('Error al copiar el producto');
+      setShowToast(true);
+    });
+  };
+
   const getCheapestProvider = () => {
     const providers = [
       { key: 'proveedor1', ...proveedor1 },
@@ -451,20 +475,11 @@ export default function Inventory() {
     return String(maxCode + 1);
   };
 
-  const generateUniqueCB = (): string => {
-    // Generar un CB único usando timestamp para evitar duplicados
-    const timestamp = Date.now();
-    const lastDigits = timestamp.toString().slice(-6);
-    const baseCB = parseInt(lastDigits) + 100000;
-    
-    // Verificar que no exista en los productos cargados
-    const exists = products.some(p => String(p.CB) === String(baseCB));
-    if (exists) {
-      // Si existe, agregar un número aleatorio
-      return String(baseCB + Math.floor(Math.random() * 1000));
-    }
-    
-    return String(baseCB);
+  const generateUniqueCB = (ci: string): string => {
+    // CB es igual al CI pero con un cero insertado después del primer dígito
+    // Ejemplo: CI = 109393 → CB = 1009393
+    // Tomar el primer dígito, agregar 0, y luego el resto
+    return ci.charAt(0) + '0' + ci.slice(1);
   };
 
   const handleCreate = () => {
@@ -476,8 +491,8 @@ export default function Inventory() {
     setShowProductTypeDialog(false);
 
     // Generar códigos automáticos
-    const nextCB = generateUniqueCB();
     const nextCI = getNextCode('CI');
+    const nextCB = generateUniqueCB(nextCI);
 
     setFormData({
       CB: nextCB,
@@ -544,10 +559,9 @@ export default function Inventory() {
     setSearchCI(ci);
 
     if (!ci) {
-      // Si se borra el CI, generar un nuevo CB y limpiar el formulario
-      const nextCB = generateUniqueCB();
+      // Si se borra el CI, limpiar el formulario
       setFormData({
-        CB: nextCB,
+        CB: '',
         CI: null,
         PRODUCTO: '',
         TIPO: null,
@@ -581,8 +595,8 @@ export default function Inventory() {
       // NO abrir automáticamente el selector de proveedores
       // El usuario puede abrirlo manualmente si lo necesita
     } else {
-      // Si no se encuentra, generar un nuevo CB y mantener el CI ingresado
-      const nextCB = generateUniqueCB();
+      // Si no se encuentra, generar un nuevo CB basado en el CI ingresado
+      const nextCB = generateUniqueCB(ci);
       setFormData({
         CB: nextCB,
         CI: ci,
@@ -1087,7 +1101,7 @@ export default function Inventory() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="min-w-full w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
@@ -1103,13 +1117,16 @@ export default function Inventory() {
                         Producto
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                        Referencia
-                      </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                         Tipo
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                         Marca
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Modelo/Especificación
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                        Referencia
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                         Stock
@@ -1118,7 +1135,7 @@ export default function Inventory() {
                         Precio
                       </th>
                       {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
                           Acciones
                         </th>
                       )}
@@ -1136,14 +1153,17 @@ export default function Inventory() {
                         <td className="py-3 px-4 text-sm text-gray-700">
                           {product.PRODUCTO}
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-700 font-mono">
-                          {product.REFERENCIA || '-'}
-                        </td>
                         <td className="py-3 px-4 text-sm text-gray-700">
                           {product.TIPO || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-700">
                           {product.MARCA || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700">
+                          {product.MODELO_ESPECIFICACION || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-700 font-mono">
+                          {product.REFERENCIA || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">
                           <span
@@ -1159,8 +1179,15 @@ export default function Inventory() {
                           ${Number(product.PRECIO).toFixed(2)}
                         </td>
                         {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex justify-end gap-2">
+                          <td className="py-3 px-4">
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => handleCopyProduct(product)}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                                title="Copiar producto"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => handleViewDetails(product)}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -1439,15 +1466,33 @@ export default function Inventory() {
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             Producto *
-                            <Tooltip content="Nombre del producto" />
+                            <Tooltip content="Usa / para separar: Producto/Tipo/Marca/Modelo/Referencia" />
                           </label>
                           <input
                             type="text"
                             required
                             value={formData.PRODUCTO || ''}
-                            onChange={(e) =>
-                              setFormData({ ...formData, PRODUCTO: e.target.value })
-                            }
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              
+                              // Detectar si hay separadores "/"
+                              if (value.includes('/')) {
+                                const parts = value.split('/').map(p => p.trim());
+                                
+                                // Formato: Producto / Tipo / Marca / Modelo / Referencia
+                                // Si una parte está vacía (/ /), dejar el campo vacío
+                                setFormData({
+                                  ...formData,
+                                  PRODUCTO: parts[0] || '',
+                                  TIPO: parts[1] !== undefined ? parts[1] : formData.TIPO,
+                                  MARCA: parts[2] !== undefined ? parts[2] : formData.MARCA,
+                                  MODELO_ESPECIFICACION: parts[3] !== undefined ? parts[3] : formData.MODELO_ESPECIFICACION,
+                                  REFERENCIA: parts[4] !== undefined ? parts[4] : formData.REFERENCIA,
+                                });
+                              } else {
+                                setFormData({ ...formData, PRODUCTO: value });
+                              }
+                            }}
                             readOnly={(isGestionInventario && modalMode === 'edit') || (isExistingProduct && !!formData.PRODUCTO)}
                             placeholder="Ej: Filtro de aceite, Abrazadera, etc."
                             className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
@@ -1469,9 +1514,9 @@ export default function Inventory() {
                             type="text"
                             value={formData.TIPO || ''}
                             onChange={(e) => setFormData({ ...formData, TIPO: e.target.value || null })}
-                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            readOnly={isGestionInventario && modalMode === 'edit'}
                             placeholder="Selecciona o escribe un tipo"
-                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isGestionInventario && modalMode === 'edit' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             list="tipos-list"
                           />
                           <datalist id="tipos-list">
@@ -1490,9 +1535,9 @@ export default function Inventory() {
                             type="text"
                             value={formData.MARCA || ''}
                             onChange={(e) => setFormData({ ...formData, MARCA: e.target.value || null })}
-                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            readOnly={isGestionInventario && modalMode === 'edit'}
                             placeholder="Selecciona o escribe una marca"
-                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isExistingProduct && formData.PRODUCTO ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isGestionInventario && modalMode === 'edit' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             list="marcas-list"
                           />
                           <datalist id="marcas-list">
@@ -1516,9 +1561,9 @@ export default function Inventory() {
                                 MODELO_ESPECIFICACION: e.target.value || null,
                               })
                             }
-                            readOnly={(isExistingProduct && !!formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit')}
+                            readOnly={isGestionInventario && modalMode === 'edit'}
                             placeholder="Ej: Mazda 3, Toyota Corolla 2015"
-                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${(isExistingProduct && formData.PRODUCTO) || (isGestionInventario && modalMode === 'edit') ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none ${isGestionInventario && modalMode === 'edit' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                           />
                         </div>
 
@@ -2381,6 +2426,13 @@ export default function Inventory() {
         </>
       )}
 
+      {/* Toast de notificación */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 }
