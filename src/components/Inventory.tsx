@@ -7,6 +7,7 @@ import Tooltip from './Tooltip';
 import CustomSelect from './CustomSelect';
 import TableSkeleton from './TableSkeleton';
 import Toast from './Toast';
+import AlertDialog from './AlertDialog';
 
 export default function Inventory() {
   const { isAdmin, permisos, usuario } = useAuth();
@@ -30,6 +31,16 @@ export default function Inventory() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'warning' | 'error' | 'success' | 'info';
+  }>({
+    title: '',
+    message: '',
+    type: 'info',
+  });
   const [entradaStock, setEntradaStock] = useState(0);
   const [salidaStock, setSalidaStock] = useState(0);
   const [searchCI, setSearchCI] = useState('');
@@ -80,6 +91,12 @@ export default function Inventory() {
     nombre: '',
     precio: 0,
   });
+
+  // Función helper para mostrar alertas
+  const showAlertDialog = (title: string, message: string, type: 'warning' | 'error' | 'success' | 'info' = 'info') => {
+    setAlertConfig({ title, message, type });
+    setShowAlert(true);
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -422,7 +439,9 @@ export default function Inventory() {
 
   const fetchProducts = async () => {
     try {
-      const response = await apiClient.getRepuestos();
+      // Solicitar TODOS los productos sin límite (o con un límite muy alto)
+      // Si el backend tiene un límite máximo, usar ese valor
+      const response = await apiClient.getRepuestos({ limit: 999999 });
       
       // La API devuelve { ok, message, data: [...] }
       let data = response;
@@ -438,11 +457,16 @@ export default function Inventory() {
         return;
       }
 
-      console.log('Inventory - Procesando', data.length, 'productos');
+      console.log('✓ Inventory - Cargados', data.length, 'productos desde la BD');
       
       // Normalizar los productos (convertir propiedades a mayúsculas)
       const normalizedProducts = data.map(normalizeProduct);
-      console.log('Inventory - Primer producto normalizado:', normalizedProducts[0]);
+      
+      // Mostrar el máximo CI para debug
+      const maxCI = Math.max(...normalizedProducts
+        .map(p => parseInt(String(p.CI)))
+        .filter(ci => !isNaN(ci)));
+      console.log('✓ Máximo CI en productos cargados:', maxCI);
       
       setProducts(normalizedProducts);
       setFilteredProducts(normalizedProducts);
@@ -456,6 +480,9 @@ export default function Inventory() {
   };
 
   const getNextCode = (field: 'CB' | 'CI'): string => {
+    console.log(`\n=== Generando siguiente ${field} ===`);
+    console.log('Total productos en memoria:', products.length);
+    
     // Filtrar productos que tienen valores numéricos en el campo
     const numericCodes = products
       .map(p => {
@@ -465,21 +492,57 @@ export default function Inventory() {
       })
       .filter(num => num > 0);
 
+    console.log(`Códigos ${field} numéricos encontrados:`, numericCodes.length);
+
     if (numericCodes.length === 0) {
-      // Si no hay códigos, empezar desde 100001
+      console.warn(`⚠️ No se encontraron códigos ${field} en memoria. Usando valor por defecto 100001`);
+      console.warn('⚠️ RECARGA LA PÁGINA (F5) para cargar todos los productos antes de crear uno nuevo');
       return '100001';
     }
 
     // Obtener el máximo y sumar 1
     const maxCode = Math.max(...numericCodes);
-    return String(maxCode + 1);
+    console.log(`Máximo ${field} encontrado:`, maxCode);
+    
+    let nextCode = maxCode + 1;
+    
+    // Verificar que el código no exista (por si acaso)
+    while (products.some(p => {
+      const value = field === 'CB' ? p.CB : p.CI;
+      return String(value) === String(nextCode);
+    })) {
+      console.log(`${field} ${nextCode} ya existe, probando siguiente...`);
+      nextCode++;
+    }
+    
+    console.log(`✓ Siguiente ${field} generado:`, nextCode);
+    return String(nextCode);
   };
 
   const generateUniqueCB = (ci: string): string => {
     // CB es igual al CI pero con un cero insertado después del primer dígito
     // Ejemplo: CI = 109393 → CB = 1009393
     // Tomar el primer dígito, agregar 0, y luego el resto
-    return ci.charAt(0) + '0' + ci.slice(1);
+    const baseCB = ci.charAt(0) + '0' + ci.slice(1);
+    
+    // Verificar que no exista en los productos cargados en memoria
+    const exists = products.some(p => String(p.CB) === baseCB);
+    
+    if (exists) {
+      // Si existe en memoria, buscar el siguiente CB disponible
+      const numericCB = parseInt(baseCB);
+      let nextCB = numericCB + 1;
+      
+      // Buscar el siguiente CB que no exista en memoria
+      while (products.some(p => String(p.CB) === String(nextCB))) {
+        nextCB++;
+      }
+      
+      console.log(`CB ${baseCB} ya existe, usando ${nextCB}`);
+      return String(nextCB);
+    }
+    
+    return baseCB;
   };
 
   const handleCreate = () => {
@@ -490,9 +553,37 @@ export default function Inventory() {
     setModalMode('create');
     setShowProductTypeDialog(false);
 
-    // Generar códigos automáticos
-    const nextCI = getNextCode('CI');
+    console.log('\n=== GENERANDO NUEVO PRODUCTO ===');
+    console.log('Total productos en memoria:', products.length);
+    
+    // Obtener el máximo CI de la lista en memoria
+    const ciValues = products
+      .map(p => {
+        const ci = parseInt(String(p.CI));
+        return isNaN(ci) ? 0 : ci;
+      })
+      .filter(ci => ci > 0);
+    
+    console.log('CIs válidos encontrados:', ciValues.length);
+    
+    if (ciValues.length === 0) {
+      showAlertDialog(
+        'Productos no cargados',
+        'Los productos aún no se han cargado. Por favor espera un momento y recarga la página (F5) antes de crear un producto nuevo.',
+        'warning'
+      );
+      return;
+    }
+    
+    const maxCI = Math.max(...ciValues);
+    console.log('✓ Máximo CI encontrado:', maxCI);
+    
+    // Generar el siguiente CI
+    const nextCI = String(maxCI + 1);
     const nextCB = generateUniqueCB(nextCI);
+    
+    console.log('✓ Siguiente CI generado:', nextCI);
+    console.log('✓ CB generado:', nextCB);
 
     setFormData({
       CB: nextCB,
@@ -660,7 +751,7 @@ export default function Inventory() {
       setProductToDelete(null);
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('Error al eliminar el producto');
+      showAlertDialog('Error', 'No se pudo eliminar el producto. Por favor intenta de nuevo.', 'error');
     }
   };
 
@@ -673,6 +764,12 @@ export default function Inventory() {
     e.preventDefault();
 
     try {
+      console.log('=== GUARDANDO PRODUCTO ===');
+      console.log('CB a guardar:', formData.CB);
+      console.log('CI a guardar:', formData.CI);
+      console.log('Modo:', modalMode);
+      console.log('Es producto existente:', isExistingProduct);
+      
       // Calcular el nuevo stock
       const stockActual = typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK;
 
@@ -802,9 +899,25 @@ export default function Inventory() {
         costo: 0,
       });
       await fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      alert('Error al guardar el producto');
+      
+      // Detectar error de duplicate key
+      if (error?.message?.includes('duplicate key') || 
+          error?.message?.includes('already exists') ||
+          error?.message?.includes('unique constraint')) {
+        showAlertDialog(
+          'Código duplicado',
+          `El código CB ${formData.CB} ya existe en la base de datos.\n\nPor favor recarga la página (F5) para actualizar la lista de productos e intenta de nuevo.`,
+          'error'
+        );
+      } else {
+        showAlertDialog(
+          'Error al guardar',
+          `No se pudo guardar el producto:\n${error?.message || 'Error desconocido'}`,
+          'error'
+        );
+      }
     }
   };
 
@@ -2248,7 +2361,11 @@ export default function Inventory() {
                       const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
 
                       if (!hayProveedores) {
-                        alert('Por favor configura al menos un proveedor');
+                        showAlertDialog(
+                          'Proveedor requerido',
+                          'Por favor configura al menos un proveedor antes de guardar.',
+                          'warning'
+                        );
                         return;
                       }
 
@@ -2256,15 +2373,24 @@ export default function Inventory() {
                       if (formData.CB && (modalMode === 'edit' || isExistingProduct)) {
                         try {
                           await guardarComparativaProveedores(String(formData.CB));
-                          alert('Comparativas guardadas correctamente');
+                          setToastMessage('Comparativas guardadas correctamente');
+                          setShowToast(true);
                           setShowProveedorSelector(false);
                         } catch (error: any) {
                           console.error('Error al guardar comparativas:', error);
                           const errorMsg = error.message || 'Error desconocido';
                           if (errorMsg.includes('requeridos')) {
-                            alert('⚠️ Error del Backend\n\nEl servidor no está procesando correctamente las peticiones POST.\n\nProblema técnico: El middleware express.json() no está configurado en el endpoint /api/producto-proveedor\n\nLos proveedores se han configurado localmente pero NO se guardaron en la base de datos.\n\nContacta al desarrollador del backend para resolver este problema.');
+                            showAlertDialog(
+                              'Error del Backend',
+                              'El servidor no está procesando correctamente las peticiones POST.\n\nProblema técnico: El middleware express.json() no está configurado en el endpoint /api/producto-proveedor\n\nLos proveedores se han configurado localmente pero NO se guardaron en la base de datos.\n\nContacta al desarrollador del backend para resolver este problema.',
+                              'error'
+                            );
                           } else {
-                            alert(`Error al guardar las comparativas: ${errorMsg}`);
+                            showAlertDialog(
+                              'Error al guardar',
+                              `No se pudieron guardar las comparativas:\n${errorMsg}`,
+                              'error'
+                            );
                           }
                         }
                       } else {
@@ -2433,6 +2559,15 @@ export default function Inventory() {
           onClose={() => setShowToast(false)}
         />
       )}
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={showAlert}
+        onClose={() => setShowAlert(false)}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+      />
     </div>
   );
 }

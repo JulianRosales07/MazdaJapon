@@ -126,6 +126,12 @@ class ApiClient {
     return this.request<any>(`/repuestos/${cb}`);
   }
 
+  async getMaxCI() {
+    // Obtener el máximo CI desde el backend
+    // Ordenar por CI descendente y tomar el primero
+    return this.request<any>('/repuestos?limit=1&orderBy=ci&order=desc');
+  }
+
   async createRepuesto(data: any) {
     return this.request<any>('/repuestos', {
       method: 'POST',
