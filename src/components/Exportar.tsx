@@ -77,20 +77,31 @@ export default function Exportar() {
         sheetName = 'Entradas';
       }
 
+      // Verificar que hay datos
+      if (data.length === 0) {
+        setExportStatus(`✗ No hay datos para exportar en ${type}`);
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
       // Crear el libro de Excel
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-      // Ajustar ancho de columnas
+      // Ajustar ancho de columnas automáticamente
       const maxWidth = 30;
-      const colWidths = Object.keys(data[0] || {}).map(key => ({
-        wch: Math.min(Math.max(key.length, 10), maxWidth)
-      }));
+      const colWidths = Object.keys(data[0]).map(key => {
+        const maxLength = Math.max(
+          key.length,
+          ...data.map(row => String(row[key] || '').length)
+        );
+        return { wch: Math.min(Math.max(maxLength + 2, 10), maxWidth) };
+      });
       worksheet['!cols'] = colWidths;
 
-      // Descargar el archivo
-      XLSX.writeFile(workbook, filename);
+      // Descargar el archivo Excel
+      XLSX.writeFile(workbook, filename, { bookType: 'xlsx', type: 'binary' });
 
       setExportStatus(`✓ ${type} exportado exitosamente`);
       setTimeout(() => setExportStatus(''), 3000);
