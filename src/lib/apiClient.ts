@@ -127,9 +127,94 @@ class ApiClient {
   }
 
   async getMaxCI() {
-    // Obtener el máximo CI desde el backend
-    // Ordenar por CI descendente y tomar el primero
-    return this.request<any>('/repuestos?limit=1&orderBy=ci&order=desc');
+    // Intentar obtener el máximo CI desde un endpoint optimizado
+    try {
+      return this.request<any>('/repuestos/max-ci');
+    } catch (error) {
+      // Fallback: obtener todos y calcular en el cliente
+      console.warn('Endpoint /repuestos/max-ci no disponible, usando fallback');
+      const response = await this.request<any>('/repuestos?limit=50000');
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      if (!Array.isArray(data)) return { maxCI: 100000 };
+      
+      const ciValues = data
+        .map((p: any) => parseInt(String(p.ci || p.CI)))
+        .filter((ci: number) => !isNaN(ci) && ci > 0);
+      
+      const maxCI = ciValues.length > 0 ? Math.max(...ciValues) : 100000;
+      return { maxCI };
+    }
+  }
+
+  async getMaxCB() {
+    // Intentar obtener el máximo CB desde un endpoint optimizado
+    try {
+      return this.request<any>('/repuestos/max-cb');
+    } catch (error) {
+      // Fallback: obtener todos y calcular en el cliente
+      console.warn('Endpoint /repuestos/max-cb no disponible, usando fallback');
+      const response = await this.request<any>('/repuestos?limit=50000');
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      if (!Array.isArray(data)) return { maxCB: 1000000 };
+      
+      const cbValues = data
+        .map((p: any) => parseInt(String(p.cb || p.CB)))
+        .filter((cb: number) => !isNaN(cb) && cb > 0);
+      
+      const maxCB = cbValues.length > 0 ? Math.max(...cbValues) : 1000000;
+      return { maxCB };
+    }
+  }
+
+  async getMaxCodes() {
+    // Obtener ambos máximos en una sola llamada (más eficiente)
+    try {
+      const result = await this.request<any>('/repuestos/max-codes');
+      return result;
+    } catch (error) {
+      // Fallback: obtener todos y calcular en el cliente
+      console.warn('⚠️ Endpoint /repuestos/max-codes no disponible, usando fallback (cargando todos los productos)');
+      console.warn('   Error:', error instanceof Error ? error.message : String(error));
+      
+      try {
+        const response = await this.request<any>('/repuestos?limit=50000');
+        let data = response;
+        if (response && typeof response === 'object' && 'data' in response) {
+          data = (response as any).data;
+        }
+        if (!Array.isArray(data)) {
+          console.warn('⚠️ Respuesta no es un array, usando valores por defecto');
+          return { maxCI: 100000, maxCB: 1000000 };
+        }
+        
+        console.log(`✅ Fallback: Cargados ${data.length} productos para calcular máximos`);
+        
+        const ciValues = data
+          .map((p: any) => parseInt(String(p.ci || p.CI)))
+          .filter((ci: number) => !isNaN(ci) && ci > 0);
+        
+        const cbValues = data
+          .map((p: any) => parseInt(String(p.cb || p.CB)))
+          .filter((cb: number) => !isNaN(cb) && cb > 0);
+        
+        const maxCI = ciValues.length > 0 ? Math.max(...ciValues) : 100000;
+        const maxCB = cbValues.length > 0 ? Math.max(...cbValues) : 1000000;
+        
+        console.log(`✅ Fallback: Calculados maxCI=${maxCI}, maxCB=${maxCB}`);
+        
+        return { maxCI, maxCB };
+      } catch (fallbackError) {
+        console.error('❌ Error en fallback:', fallbackError);
+        // Si todo falla, devolver valores por defecto
+        return { maxCI: 100000, maxCB: 1000000 };
+      }
+    }
   }
 
   async createRepuesto(data: any) {

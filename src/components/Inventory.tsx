@@ -549,67 +549,76 @@ export default function Inventory() {
     setShowProductTypeDialog(true);
   };
 
-  const handleNewProduct = () => {
+  const handleNewProduct = async () => {
     setModalMode('create');
     setShowProductTypeDialog(false);
 
     console.log('\n=== GENERANDO NUEVO PRODUCTO ===');
-    console.log('Total productos en memoria:', products.length);
     
-    // Obtener el máximo CI de la lista en memoria
-    const ciValues = products
-      .map(p => {
-        const ci = parseInt(String(p.CI));
-        return isNaN(ci) ? 0 : ci;
-      })
-      .filter(ci => ci > 0);
-    
-    console.log('CIs válidos encontrados:', ciValues.length);
-    
-    if (ciValues.length === 0) {
-      showAlertDialog(
-        'Productos no cargados',
-        'Los productos aún no se han cargado. Por favor espera un momento y recarga la página (F5) antes de crear un producto nuevo.',
-        'warning'
-      );
-      return;
-    }
-    
-    const maxCI = Math.max(...ciValues);
-    console.log('✓ Máximo CI encontrado:', maxCI);
-    
-    // Generar el siguiente CI
-    const nextCI = String(maxCI + 1);
-    const nextCB = generateUniqueCB(nextCI);
-    
-    console.log('✓ Siguiente CI generado:', nextCI);
-    console.log('✓ CB generado:', nextCB);
+    try {
+      // Obtener los máximos CI y CB de forma optimizada
+      console.log('🔄 Consultando máximos CI/CB desde la BD...');
+      const result = await apiClient.getMaxCodes();
+      
+      let maxCI = 100000;
+      let maxCB = 1000000;
+      
+      // Manejar diferentes formatos de respuesta
+      if (result && typeof result === 'object') {
+        if ('data' in result) {
+          const data = (result as any).data;
+          maxCI = data.maxCI || data.max_ci || 100000;
+          maxCB = data.maxCB || data.max_cb || 1000000;
+        } else {
+          maxCI = result.maxCI || result.max_ci || 100000;
+          maxCB = result.maxCB || result.max_cb || 1000000;
+        }
+      }
+      
+      console.log('✅ Máximo CI en BD:', maxCI);
+      console.log('✅ Máximo CB en BD:', maxCB);
+      
+      // Generar el siguiente CI y CB
+      const nextCI = String(maxCI + 1);
+      const nextCB = String(maxCB + 1);
+      
+      console.log('✅ Siguiente CI:', nextCI);
+      console.log('✅ Siguiente CB:', nextCB);
 
-    setFormData({
-      CB: nextCB,
-      CI: nextCI,
-      PRODUCTO: '',
-      TIPO: null,
-      MODELO_ESPECIFICACION: null,
-      REFERENCIA: null,
-      MARCA: null,
-      EXISTENCIAS_INICIALES: 0,
-      STOCK: 0,
-      PRECIO: 0,
-      DESCRIPCION_LARGA: null,
-      ESTANTE: null,
-      NIVEL: null,
-    });
-    setEntradaStock(0);
-    setSalidaStock(0);
-    setProveedorData({
-      nFactura: '',
-      proveedor: '',
-      fecha: '',
-      cantidad: 0,
-      costo: 0,
-    });
-    setShowModal(true);
+      setFormData({
+        CB: nextCB,
+        CI: nextCI,
+        PRODUCTO: '',
+        TIPO: null,
+        MODELO_ESPECIFICACION: null,
+        REFERENCIA: null,
+        MARCA: null,
+        EXISTENCIAS_INICIALES: 0,
+        STOCK: 0,
+        PRECIO: 0,
+        DESCRIPCION_LARGA: null,
+        ESTANTE: null,
+        NIVEL: null,
+      });
+      setEntradaStock(0);
+      setSalidaStock(0);
+      setProveedorData({
+        nFactura: '',
+        proveedor: '',
+        fecha: '',
+        cantidad: 0,
+        costo: 0,
+      });
+      resetProveedoresSelector();
+      setShowModal(true);
+    } catch (error) {
+      console.error('❌ Error obteniendo códigos:', error);
+      showAlertDialog(
+        'Error',
+        'No se pudo obtener el siguiente código desde la base de datos. Por favor intenta de nuevo.',
+        'error'
+      );
+    }
   };
 
   const handleExistingProduct = () => {
