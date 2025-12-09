@@ -69,6 +69,8 @@ export interface Proveedor {
   cp: string;
   nombre_proveedor: string;
   costo?: number;
+  saldo_a_favor?: number; // Mazda Japón le debe al proveedor
+  saldo_en_contra?: number; // El proveedor le debe a Mazda Japón
   fecha_creacion?: string;
   fecha_actualizacion?: string;
   usuario_creacion?: number;

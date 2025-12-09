@@ -26,6 +26,8 @@ export default function Proveedores() {
     cp: '',
     nombre_proveedor: '',
     costo: 0,
+    saldo_a_favor: 0,
+    saldo_en_contra: 0,
   });
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export default function Proveedores() {
       cp: prov.cp || prov.CP || '',
       nombre_proveedor: prov.nombre_proveedor || prov.NOMBRE_PROVEEDOR || '',
       costo: prov.costo || prov.COSTO || 0,
+      saldo_a_favor: prov.saldo_a_favor || prov.SALDO_A_FAVOR || 0,
+      saldo_en_contra: prov.saldo_en_contra || prov.SALDO_EN_CONTRA || 0,
       fecha_creacion: prov.fecha_creacion,
       fecha_actualizacion: prov.fecha_actualizacion,
       usuario_creacion: prov.usuario_creacion,
@@ -64,6 +68,7 @@ export default function Proveedores() {
   const fetchProveedores = async () => {
     try {
       const response = await apiClient.getProveedores();
+      console.log('📦 Respuesta del backend:', response);
       let data = response;
       if (response && typeof response === 'object' && 'data' in response) {
         data = (response as any).data;
@@ -76,7 +81,9 @@ export default function Proveedores() {
         return;
       }
 
+      console.log('📦 Primer proveedor sin normalizar:', data[0]);
       const normalized = data.map(normalizeProveedor);
+      console.log('📦 Primer proveedor normalizado:', normalized[0]);
       setProveedores(normalized);
       setFilteredProveedores(normalized);
     } catch (error) {
@@ -115,7 +122,7 @@ export default function Proveedores() {
 
   const handleCreate = () => {
     setModalMode('create');
-    setFormData({ ci: '', cp: '', nombre_proveedor: '', costo: 0 });
+    setFormData({ ci: '', cp: '', nombre_proveedor: '', costo: 0, saldo_a_favor: 0, saldo_en_contra: 0 });
     setCiSearchTerm('');
     setShowModal(true);
   };
@@ -128,6 +135,8 @@ export default function Proveedores() {
       cp: proveedor.cp,
       nombre_proveedor: proveedor.nombre_proveedor,
       costo: proveedor.costo || 0,
+      saldo_a_favor: proveedor.saldo_a_favor || 0,
+      saldo_en_contra: proveedor.saldo_en_contra || 0,
     });
     setCiSearchTerm(proveedor.ci || '');
     setShowModal(true);
@@ -155,11 +164,15 @@ export default function Proveedores() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('💾 Datos a guardar:', formData);
+
     try {
       if (modalMode === 'create') {
-        await apiClient.createProveedor(formData);
+        const result = await apiClient.createProveedor(formData);
+        console.log('✅ Proveedor creado:', result);
       } else if (selectedProveedor) {
-        await apiClient.updateProveedor(selectedProveedor.id_proveedor!, formData);
+        const result = await apiClient.updateProveedor(selectedProveedor.id_proveedor!, formData);
+        console.log('✅ Proveedor actualizado:', result);
       }
 
       setShowModal(false);
@@ -222,7 +235,7 @@ export default function Proveedores() {
         </div>
 
         {loading ? (
-          <TableSkeleton rows={itemsPerPage} columns={permisos.puedeGestionarProveedores ? 5 : 4} />
+          <TableSkeleton rows={itemsPerPage} columns={permisos.puedeGestionarProveedores ? 7 : 6} />
         ) : filteredProveedores.length === 0 ? (
           <div className="text-center py-12 text-gray-600">No se encontraron proveedores</div>
         ) : (
@@ -235,6 +248,8 @@ export default function Proveedores() {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Nombre Proveedor</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">CI</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Costo</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Saldo a Favor</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Saldo en Contra</th>
                     {permisos.puedeGestionarProveedores && (
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
                     )}
@@ -263,6 +278,26 @@ export default function Proveedores() {
                             {Number(proveedor.costo).toLocaleString('es-CO')}
                           </div>
                         ) : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {proveedor.saldo_a_favor !== undefined && proveedor.saldo_a_favor !== 0 ? (
+                          <div className="flex items-center gap-1 font-medium text-green-600">
+                            <DollarSign className="w-3 h-3" />
+                            {Number(proveedor.saldo_a_favor).toLocaleString('es-CO')}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">$0</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {proveedor.saldo_en_contra !== undefined && proveedor.saldo_en_contra !== 0 ? (
+                          <div className="flex items-center gap-1 font-medium text-red-600">
+                            <DollarSign className="w-3 h-3" />
+                            {Number(proveedor.saldo_en_contra).toLocaleString('es-CO')}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">$0</span>
+                        )}
                       </td>
                       {permisos.puedeGestionarProveedores && (
                         <td className="py-3 px-4 text-right">
@@ -428,6 +463,42 @@ export default function Proveedores() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
                     placeholder="0.00"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Saldo a Favor
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.saldo_a_favor || ''}
+                    onChange={(e) => setFormData({ ...formData, saldo_a_favor: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-green-600 mt-1">
+                    Mazda Japón le debe al proveedor
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Saldo en Contra
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.saldo_en_contra || ''}
+                    onChange={(e) => setFormData({ ...formData, saldo_en_contra: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-red-600 mt-1">
+                    El proveedor le debe a Mazda Japón
+                  </p>
                 </div>
               </div>
 
