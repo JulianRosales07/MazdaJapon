@@ -24,3 +24,52 @@
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+
+/* Scrollbar elegante estilo macOS - Oculta por defecto */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 20px;
+  transition: background 0.3s ease;
+}
+
+/* Mostrar scrollbar solo en hover del contenedor */
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Ocultar botones de arriba y abajo */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Para Firefox - scrollbar overlay */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Animación suave para el scroll */
+html {
+  scroll-behavior: smooth;
+}
