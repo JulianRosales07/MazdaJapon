@@ -550,33 +550,102 @@ export default function Inventory() {
   };
 
   const handleNewProduct = async () => {
+    console.log('\n\n🆕🆕🆕 === CLICK EN AGREGAR PRODUCTO NUEVO === 🆕🆕🆕\n');
     setModalMode('create');
     setShowProductTypeDialog(false);
-
-    console.log('\n=== GENERANDO NUEVO PRODUCTO ===');
     
+    // Abrir el modal INMEDIATAMENTE con valores vacíos
+    setFormData({
+      CB: '',
+      CI: null,
+      PRODUCTO: '',
+      TIPO: null,
+      MODELO_ESPECIFICACION: null,
+      REFERENCIA: null,
+      MARCA: null,
+      EXISTENCIAS_INICIALES: 0,
+      STOCK: 0,
+      PRECIO: 0,
+      DESCRIPCION_LARGA: null,
+      ESTANTE: null,
+      NIVEL: null,
+    });
+    setEntradaStock(0);
+    setSalidaStock(0);
+    setProveedorData({
+      nFactura: '',
+      proveedor: '',
+      fecha: '',
+      cantidad: 0,
+      costo: 0,
+    });
+    resetProveedoresSelector();
+    setShowModal(true); // ✅ Modal se abre INSTANTÁNEAMENTE
+    
+    // Cargar los códigos en segundo plano
     try {
-      // Obtener los máximos CI y CB de forma optimizada
-      console.log('🔄 Consultando máximos CI/CB desde la BD...');
-      const result = await apiClient.getMaxCodes();
+      console.log('🔄 Consultando máximos CI/CB...');
       
       let maxCI = 100000;
       let maxCB = 1000000;
+      let usedBackend = false;
       
-      // Manejar diferentes formatos de respuesta
-      if (result && typeof result === 'object') {
-        if ('data' in result) {
-          const data = (result as any).data;
-          maxCI = data.maxCI || data.max_ci || 100000;
-          maxCB = data.maxCB || data.max_cb || 1000000;
-        } else {
-          maxCI = result.maxCI || result.max_ci || 100000;
-          maxCB = result.maxCB || result.max_cb || 1000000;
+      try {
+        const result = await apiClient.getMaxCodes();
+        
+        // Manejar diferentes formatos de respuesta
+        if (result && typeof result === 'object') {
+          // Caso 1: Respuesta del backend optimizado con estructura {ok, message, data: {maxCI, maxCB}}
+          if ('data' in result && result.data && typeof result.data === 'object') {
+            const data = result.data;
+            
+            // Verificar si data tiene las propiedades esperadas
+            const hasMaxCI = 'maxCI' in data || 'max_ci' in data;
+            const hasMaxCB = 'maxCB' in data || 'max_cb' in data;
+            
+            if (hasMaxCI && hasMaxCB) {
+              maxCI = data.maxCI || data.max_ci || 100000;
+              maxCB = data.maxCB || data.max_cb || 1000000;
+              usedBackend = true;
+              console.log('✅ Usando endpoint optimizado del backend');
+            }
+          } 
+          // Caso 2: Respuesta directa del fallback {maxCI, maxCB}
+          else if ('maxCI' in result || 'max_ci' in result) {
+            maxCI = result.maxCI || result.max_ci || 100000;
+            maxCB = result.maxCB || result.max_cb || 1000000;
+            usedBackend = true;
+            console.log('✅ Usando fallback del apiClient');
+          }
         }
+      } catch (backendError) {
+        console.warn('⚠️ Error consultando backend, usando productos en memoria');
       }
       
-      console.log('✅ Máximo CI en BD:', maxCI);
-      console.log('✅ Máximo CB en BD:', maxCB);
+      // Si el backend no funcionó, calcular desde los productos en memoria
+      if (!usedBackend && products.length > 0) {
+        console.log('🔄 Calculando desde productos en memoria...');
+        
+        const ciValues = products
+          .map(p => parseInt(String(p.CI)))
+          .filter(ci => !isNaN(ci) && ci > 0);
+        
+        const cbValues = products
+          .map(p => parseInt(String(p.CB)))
+          .filter(cb => !isNaN(cb) && cb > 0);
+        
+        if (ciValues.length > 0) {
+          maxCI = Math.max(...ciValues);
+        }
+        if (cbValues.length > 0) {
+          maxCB = Math.max(...cbValues);
+        }
+        
+        console.log('✅ Calculado desde memoria local');
+      }
+      
+      console.log('✅ Máximo CI:', maxCI);
+      console.log('✅ Máximo CB:', maxCB);
       
       // Generar el siguiente CI y CB
       const nextCI = String(maxCI + 1);
@@ -585,39 +654,21 @@ export default function Inventory() {
       console.log('✅ Siguiente CI:', nextCI);
       console.log('✅ Siguiente CB:', nextCB);
 
-      setFormData({
+      // Actualizar el formulario con los códigos reales
+      setFormData(prev => ({
+        ...prev,
         CB: nextCB,
         CI: nextCI,
-        PRODUCTO: '',
-        TIPO: null,
-        MODELO_ESPECIFICACION: null,
-        REFERENCIA: null,
-        MARCA: null,
-        EXISTENCIAS_INICIALES: 0,
-        STOCK: 0,
-        PRECIO: 0,
-        DESCRIPCION_LARGA: null,
-        ESTANTE: null,
-        NIVEL: null,
-      });
-      setEntradaStock(0);
-      setSalidaStock(0);
-      setProveedorData({
-        nFactura: '',
-        proveedor: '',
-        fecha: '',
-        cantidad: 0,
-        costo: 0,
-      });
-      resetProveedoresSelector();
-      setShowModal(true);
+      }));
     } catch (error) {
-      console.error('❌ Error obteniendo códigos:', error);
+      console.error('❌ Error crítico obteniendo códigos:', error);
       showAlertDialog(
         'Error',
-        'No se pudo obtener el siguiente código desde la base de datos. Por favor intenta de nuevo.',
+        'No se pudo obtener el siguiente código. Por favor recarga la página e intenta de nuevo.',
         'error'
       );
+      // Cerrar el modal si falla
+      setShowModal(false);
     }
   };
 
