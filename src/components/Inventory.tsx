@@ -1810,7 +1810,7 @@ export default function Inventory() {
                               type="number"
                               min="0"
                               required
-                              value={formData.STOCK || 0}
+                              value={formData.STOCK || ''}
                               onChange={(e) =>
                                 setFormData({
                                   ...formData,
@@ -1943,7 +1943,7 @@ export default function Inventory() {
                             min="0"
                             step="0.01"
                             required
-                            value={formData.PRECIO || 0}
+                            value={formData.PRECIO || ''}
                             readOnly={false}
                             onChange={(e) =>
                               setFormData({
@@ -1962,7 +1962,31 @@ export default function Inventory() {
                   {/* Sección de edición: Entradas y Salidas */}
                   {modalMode === 'edit' && (
                     <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Ajuste de Stock</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Ajuste de Stock y Precio</h4>
+                      
+                      {/* Campo de Precio */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                          Precio de Venta *
+                          <Tooltip content="Precio de venta al cliente" />
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          value={formData.PRECIO || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              PRECIO: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="Ej: 25.50"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -1985,7 +2009,7 @@ export default function Inventory() {
                           <input
                             type="number"
                             min="0"
-                            value={entradaStock || 0}
+                            value={entradaStock || ''}
                             onChange={(e) => setEntradaStock(parseInt(e.target.value) || 0)}
                             placeholder="Ej: 10"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
@@ -2000,7 +2024,7 @@ export default function Inventory() {
                           <input
                             type="number"
                             min="0"
-                            value={salidaStock || 0}
+                            value={salidaStock || ''}
                             onChange={(e) => setSalidaStock(parseInt(e.target.value) || 0)}
                             placeholder="Ej: 5"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
