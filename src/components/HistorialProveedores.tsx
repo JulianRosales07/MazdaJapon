@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { X, TrendingUp, TrendingDown, Calendar, DollarSign, History } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Calendar, DollarSign, History, Edit2, Trash2 } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import type { HistorialPrecio } from '../lib/types';
 import TableSkeleton from './TableSkeleton';
+import Toast from './Toast';
 
 interface HistorialProveedoresProps {
   productoCB: string;
@@ -14,6 +15,15 @@ export default function HistorialProveedores({ productoCB, productoNombre, onClo
   const [historial, setHistorial] = useState<HistorialPrecio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<HistorialPrecio | null>(null);
+  const [editMotivo, setEditMotivo] = useState('');
+  const [editPrecioNuevo, setEditPrecioNuevo] = useState<number>(0);
+  const [editPrecioAnterior, setEditPrecioAnterior] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHistorial();
@@ -78,14 +88,74 @@ export default function HistorialProveedores({ productoCB, productoNombre, onClo
     return `${sign}${percentage.toFixed(2)}%`;
   };
 
+  const handleEdit = (item: HistorialPrecio) => {
+    setEditingItem(item);
+    setEditMotivo(item.motivo_cambio || '');
+    setEditPrecioNuevo(item.precio_nuevo);
+    setEditPrecioAnterior(item.precio_anterior);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (id: number) => {
+    setItemToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      // Llamar al endpoint de eliminación (soft delete)
+      await apiClient.deleteHistorialPrecio(itemToDelete);
+      
+      setToastMessage('Registro eliminado correctamente');
+      setShowToast(true);
+      setShowDeleteDialog(false);
+      setItemToDelete(null);
+      
+      // Recargar el historial
+      await fetchHistorial();
+    } catch (error: any) {
+      console.error('Error deleting historial:', error);
+      setToastMessage('Error al eliminar el registro');
+      setShowToast(true);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      // Llamar al endpoint de actualización
+      await apiClient.updateHistorialPrecio(editingItem.id_historial, {
+        precio_anterior: editPrecioAnterior,
+        precio_nuevo: editPrecioNuevo,
+        motivo_cambio: editMotivo,
+      });
+      
+      setToastMessage('Registro actualizado correctamente');
+      setShowToast(true);
+      setShowEditModal(false);
+      setEditingItem(null);
+      setEditMotivo('');
+      setEditPrecioNuevo(0);
+      setEditPrecioAnterior(null);
+      
+      // Recargar el historial
+      await fetchHistorial();
+    } catch (error: any) {
+      console.error('Error updating historial:', error);
+      setToastMessage('Error al actualizar el registro');
+      setShowToast(true);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120]"
-      onClick={onClose}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-6 py-5 border-b border-gray-200">
@@ -242,6 +312,9 @@ export default function HistorialProveedores({ productoCB, productoNombre, onClo
                         <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">
                           Motivo
                         </th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -308,6 +381,24 @@ export default function HistorialProveedores({ productoCB, productoNombre, onClo
                           <td className="py-3 px-4 text-sm text-gray-600">
                             {item.motivo_cambio || '-'}
                           </td>
+                          <td className="py-3 px-4">
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                title="Editar motivo"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.id_historial)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                title="Eliminar registro"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -328,6 +419,165 @@ export default function HistorialProveedores({ productoCB, productoNombre, onClo
           </button>
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      {showEditModal && editingItem && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[130]"
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Editar Registro de Historial</h3>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Proveedor
+                </label>
+                <div className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                  {editingItem.proveedor_nombre || `Proveedor #${editingItem.proveedor_id}`}
+                  {editingItem.proveedor_cp && (
+                    <span className="text-gray-500 ml-2">({editingItem.proveedor_cp})</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio Anterior
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editPrecioAnterior || ''}
+                      onChange={(e) => setEditPrecioAnterior(e.target.value ? parseFloat(e.target.value) : null)}
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio Nuevo *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={editPrecioNuevo}
+                      onChange={(e) => setEditPrecioNuevo(parseFloat(e.target.value) || 0)}
+                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {editPrecioAnterior !== null && editPrecioNuevo > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-900">
+                    <div className="font-medium mb-1">Resumen del cambio:</div>
+                    <div className="flex items-center justify-between">
+                      <span>Diferencia:</span>
+                      <span className={`font-bold ${editPrecioNuevo - editPrecioAnterior > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        ${Math.abs(editPrecioNuevo - editPrecioAnterior).toFixed(2)}
+                        {editPrecioNuevo - editPrecioAnterior > 0 ? ' ↑' : ' ↓'}
+                      </span>
+                    </div>
+                    {editPrecioAnterior !== 0 && (
+                      <div className="flex items-center justify-between">
+                        <span>Cambio:</span>
+                        <span className={`font-bold ${editPrecioNuevo - editPrecioAnterior > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {((editPrecioNuevo - editPrecioAnterior) / editPrecioAnterior * 100).toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo del Cambio
+                </label>
+                <textarea
+                  value={editMotivo}
+                  onChange={(e) => setEditMotivo(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  placeholder="Describe el motivo del cambio de precio..."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveEdit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de Confirmación de Eliminación */}
+      {showDeleteDialog && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[130]"
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700">
+                ¿Estás seguro de que deseas eliminar este registro del historial? Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de notificación */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 }

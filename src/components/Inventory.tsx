@@ -1103,7 +1103,7 @@ export default function Inventory() {
                   >
                     Volver
                   </button>
-                  {isAdmin && (
+                  {permisos.puedeEditarInventario && (
                     <button
                       onClick={() => {
                         handleEdit(selectedProduct);
@@ -1112,7 +1112,19 @@ export default function Inventory() {
                       className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium flex items-center gap-2"
                     >
                       <Edit2 className="w-4 h-4" />
-                      Editar Producto
+                      Editar
+                    </button>
+                  )}
+                  {permisos.puedeEliminarInventario && (
+                    <button
+                      onClick={() => {
+                        handleDelete(selectedProduct.CB);
+                        setViewMode('list');
+                      }}
+                      className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar
                     </button>
                   )}
                 </div>

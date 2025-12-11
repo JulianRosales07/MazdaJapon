@@ -469,6 +469,19 @@ class ApiClient {
     const query = new URLSearchParams(params as any).toString();
     return this.request<any[]>(`/historial-precios/comparar/${producto_cb}${query ? `?${query}` : ''}`);
   }
+
+  async updateHistorialPrecio(id: number, data: any) {
+    return this.request<any>(`/historial-precios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteHistorialPrecio(id: number) {
+    return this.request<any>(`/historial-precios/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
