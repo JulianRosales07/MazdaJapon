@@ -429,6 +429,46 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // ============================================
+  // HISTORIAL DE PRECIOS
+  // ============================================
+  async getHistorialPrecios(params?: { 
+    producto_cb?: string; 
+    proveedor_id?: number;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    limit?: number;
+  }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any[]>(`/historial-precios${query ? `?${query}` : ''}`);
+  }
+
+  async getHistorialPreciosByProducto(producto_cb: string, limit?: number) {
+    const query = limit ? `?limit=${limit}` : '';
+    return this.request<any[]>(`/historial-precios/producto/${producto_cb}${query}`);
+  }
+
+  async getHistorialPreciosByProveedor(proveedor_id: number, limit?: number) {
+    const query = limit ? `?limit=${limit}` : '';
+    return this.request<any[]>(`/historial-precios/proveedor/${proveedor_id}${query}`);
+  }
+
+  async getHistorialPreciosProductoProveedor(producto_cb: string, proveedor_id: number) {
+    return this.request<any[]>(`/historial-precios/producto/${producto_cb}/proveedor/${proveedor_id}`);
+  }
+
+  async getEstadisticasPrecios(producto_cb: string, proveedor_id: number) {
+    return this.request<any>(`/historial-precios/estadisticas/${producto_cb}/${proveedor_id}`);
+  }
+
+  async compararProveedores(producto_cb: string, params?: {
+    fecha_desde?: string;
+    fecha_hasta?: string;
+  }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any[]>(`/historial-precios/comparar/${producto_cb}${query ? `?${query}` : ''}`);
+  }
 }
 
 export const apiClient = new ApiClient();

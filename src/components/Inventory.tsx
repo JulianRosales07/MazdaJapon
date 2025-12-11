@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy, History } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import type { Repuesto, Proveedor } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import CustomSelect from './CustomSelect';
 import TableSkeleton from './TableSkeleton';
 import Toast from './Toast';
 import AlertDialog from './AlertDialog';
+import HistorialProveedores from './HistorialProveedores';
 
 export default function Inventory() {
   const { isAdmin, permisos, usuario } = useAuth();
@@ -24,6 +25,7 @@ export default function Inventory() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list');
   const [selectedProduct, setSelectedProduct] = useState<Repuesto | null>(null);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1086,25 +1088,34 @@ export default function Inventory() {
               </div>
 
               {/* Botones de Acción */}
-              <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">
+              <div className="flex gap-3 justify-between pt-6 border-t border-gray-200">
                 <button
-                  onClick={handleBackToList}
-                  className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+                  onClick={() => setShowHistorialModal(true)}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
                 >
-                  Volver
+                  <History className="w-4 h-4" />
+                  Historial Proveedores
                 </button>
-                {isAdmin && (
+                <div className="flex gap-3">
                   <button
-                    onClick={() => {
-                      handleEdit(selectedProduct);
-                      setViewMode('list');
-                    }}
-                    className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium flex items-center gap-2"
+                    onClick={handleBackToList}
+                    className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
                   >
-                    <Edit2 className="w-4 h-4" />
-                    Editar Producto
+                    Volver
                   </button>
-                )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        handleEdit(selectedProduct);
+                        setViewMode('list');
+                      }}
+                      className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium flex items-center gap-2"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Editar Producto
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -2628,6 +2639,15 @@ export default function Inventory() {
         message={alertConfig.message}
         type={alertConfig.type}
       />
+
+      {/* Modal de Historial de Proveedores */}
+      {showHistorialModal && selectedProduct && (
+        <HistorialProveedores
+          productoCB={String(selectedProduct.CB)}
+          productoNombre={selectedProduct.PRODUCTO}
+          onClose={() => setShowHistorialModal(false)}
+        />
+      )}
     </div>
   );
 }

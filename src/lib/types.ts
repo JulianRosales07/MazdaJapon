@@ -89,3 +89,20 @@ export interface ProductoProveedor {
   activo?: boolean;
   proveedores?: Proveedor;
 }
+
+export interface HistorialPrecio {
+  id_historial: number;
+  producto_cb: string;
+  producto_nombre?: string;
+  proveedor_id: number;
+  proveedor_nombre?: string;
+  proveedor_cp?: string;
+  precio_anterior: number | null;
+  precio_nuevo: number;
+  diferencia?: number;
+  porcentaje_cambio?: number;
+  fecha_cambio: string;
+  usuario_modificacion?: string | null;
+  motivo_cambio?: string | null;
+  activo?: boolean;
+}
