@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy, History } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy, History, Printer, Package } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import type { Repuesto, Proveedor } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,207 @@ import TableSkeleton from './TableSkeleton';
 import Toast from './Toast';
 import AlertDialog from './AlertDialog';
 import HistorialProveedores from './HistorialProveedores';
+import PrintLabel from './PrintLabel';
+import PrintMultipleLabels from './PrintMultipleLabels';
+
+// Componente para mostrar datos de entradas
+interface EntradasModalProps {
+  productoCB: string;
+  productoNombre: string;
+  onClose: () => void;
+}
+
+function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalProps) {
+  const [entradas, setEntradas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchEntradas();
+  }, [productoCB]);
+
+  const fetchEntradas = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Obtener todas las entradas y filtrar por CB
+      const response = await apiClient.getEntradas();
+      
+      // Manejar estructura de respuesta
+      let data = response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = (response as any).data;
+      }
+      
+      if (!Array.isArray(data)) {
+        console.error('La respuesta no es un array:', data);
+        setEntradas([]);
+        return;
+      }
+      
+      // Filtrar entradas por CB
+      const entradasFiltradas = data.filter((entrada: any) => {
+        const entraCB = String(entrada.cb || entrada.CB || '');
+        return entraCB === productoCB;
+      });
+      
+      // Ordenar por fecha descendente (más reciente primero)
+      entradasFiltradas.sort((a: any, b: any) => {
+        const fechaA = new Date(a.fecha || a.FECHA).getTime();
+        const fechaB = new Date(b.fecha || b.FECHA).getTime();
+        return fechaB - fechaA;
+      });
+      
+      setEntradas(entradasFiltradas);
+    } catch (error) {
+      console.error('Error fetching entradas:', error);
+      setError('No se pudieron cargar los datos de entradas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-5 border-b border-green-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Package className="w-6 h-6" />
+                Datos de Entradas
+              </h2>
+              <p className="text-green-100 text-sm mt-1">
+                {productoNombre} (CB: {productoCB})
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-green-800 rounded-lg p-2 transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Contenido */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {loading ? (
+            <TableSkeleton rows={5} columns={7} />
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-red-600 mb-2">
+                <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">{error}</p>
+              </div>
+            </div>
+          ) : entradas.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-600 font-medium">No hay entradas registradas para este producto</p>
+              <p className="text-gray-500 text-sm mt-2">Las entradas aparecerán aquí cuando se registren compras</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 bg-gray-50">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">N° Factura</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Proveedor</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Cantidad</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Costo Unitario</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Costo Total</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Valor Venta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entradas.map((entrada, index) => {
+                    const fecha = entrada.fecha || entrada.FECHA;
+                    const nFactura = entrada.n_factura || entrada.N_FACTURA;
+                    const proveedor = entrada.proveedor || entrada.PROVEEDOR;
+                    const cantidad = Number(entrada.cantidad || entrada.CANTIDAD || 0);
+                    const costo = Number(entrada.costo || entrada.COSTO || 0);
+                    const valorVenta = Number(entrada.valor_venta || entrada.VALOR_VENTA || 0);
+                    const costoTotal = cantidad * costo;
+
+                    return (
+                      <tr
+                        key={index}
+                        className="border-b border-gray-100 hover:bg-gray-50 transition"
+                      >
+                        <td className="py-3 px-4 text-sm text-gray-900">
+                          {fecha ? new Date(fecha).toLocaleDateString('es-ES', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                          }) : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 font-mono">
+                          {nFactura || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900">
+                          {proveedor || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 text-right font-medium">
+                          {cantidad}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                          ${costo.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-900 text-right font-semibold">
+                          ${costoTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-green-700 text-right font-medium">
+                          ${valorVenta.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                    <td colSpan={3} className="py-3 px-4 text-sm text-gray-900">
+                      TOTALES
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                      {entradas.reduce((sum, e) => sum + Number(e.cantidad || e.CANTIDAD || 0), 0)}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                      -
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                      ${entradas.reduce((sum, e) => {
+                        const cantidad = Number(e.cantidad || e.CANTIDAD || 0);
+                        const costo = Number(e.costo || e.COSTO || 0);
+                        return sum + (cantidad * costo);
+                      }, 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                      -
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition font-medium"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Inventory() {
   const { isAdmin, permisos, usuario } = useAuth();
@@ -26,6 +227,11 @@ export default function Inventory() {
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list');
   const [selectedProduct, setSelectedProduct] = useState<Repuesto | null>(null);
   const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [showEntradasModal, setShowEntradasModal] = useState(false);
+  const [showPrintLabel, setShowPrintLabel] = useState(false);
+  const [productToPrint, setProductToPrint] = useState<Repuesto | null>(null);
+  const [showPrintMultiple, setShowPrintMultiple] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -807,13 +1013,70 @@ export default function Inventory() {
     if (!productToDelete) return;
 
     try {
+      console.log('=== ELIMINANDO PRODUCTO ===');
+      console.log('CB a eliminar:', productToDelete);
+      
+      // Paso 1: Obtener y eliminar todas las relaciones con proveedores
+      try {
+        console.log('Paso 1: Buscando relaciones con proveedores...');
+        const relaciones = await apiClient.getProveedoresByProducto(String(productToDelete));
+        
+        let relacionesArray = relaciones;
+        if (relaciones && typeof relaciones === 'object' && 'data' in relaciones) {
+          relacionesArray = (relaciones as any).data;
+        }
+        
+        if (Array.isArray(relacionesArray) && relacionesArray.length > 0) {
+          console.log(`Encontradas ${relacionesArray.length} relaciones. Eliminando...`);
+          
+          // Eliminar cada relación
+          for (const relacion of relacionesArray) {
+            const idRelacion = relacion.id_producto_proveedor;
+            console.log(`Eliminando relación ID: ${idRelacion}`);
+            await apiClient.deleteProductoProveedor(idRelacion);
+          }
+          
+          console.log('✅ Todas las relaciones eliminadas');
+        } else {
+          console.log('No hay relaciones con proveedores para eliminar');
+        }
+      } catch (errorRelaciones) {
+        console.warn('Error al eliminar relaciones (continuando):', errorRelaciones);
+        // Continuar aunque falle la eliminación de relaciones
+      }
+      
+      // Paso 2: Eliminar el producto
+      console.log('Paso 2: Eliminando producto...');
       await apiClient.deleteRepuesto(String(productToDelete));
+      console.log('✅ Producto eliminado exitosamente');
+      
+      // Paso 3: Actualizar la lista
       await fetchProducts();
       setShowDeleteDialog(false);
       setProductToDelete(null);
-    } catch (error) {
+      
+      // Mostrar mensaje de éxito
+      setToastMessage('Producto eliminado correctamente');
+      setShowToast(true);
+    } catch (error: any) {
       console.error('Error deleting product:', error);
-      showAlertDialog('Error', 'No se pudo eliminar el producto. Por favor intenta de nuevo.', 'error');
+      
+      // Cerrar el modal de confirmación antes de mostrar el error
+      setShowDeleteDialog(false);
+      setProductToDelete(null);
+      
+      // Detectar error de foreign key constraint
+      if (error?.message?.includes('foreign key constraint') || 
+          error?.message?.includes('violates') ||
+          error?.message?.includes('producto_proveedor')) {
+        showAlertDialog(
+          'No se puede eliminar',
+          'No se pudo eliminar el producto debido a restricciones de la base de datos.\n\nPor favor contacta al administrador del sistema para resolver este problema.',
+          'error'
+        );
+      } else {
+        showAlertDialog('Error', `No se pudo eliminar el producto: ${error?.message || 'Error desconocido'}`, 'error');
+      }
     }
   };
 
@@ -909,6 +1172,39 @@ export default function Inventory() {
             } catch (error) {
               console.error('Error al guardar comparativas:', error);
             }
+          }
+
+          // Crear entrada para producto nuevo si hay datos de proveedor
+          console.log('=== VERIFICANDO DATOS DE PROVEEDOR PARA PRODUCTO NUEVO ===');
+          console.log('proveedorData:', proveedorData);
+          console.log('Condición:', proveedorData.proveedor || proveedorData.costo > 0 || proveedorData.nFactura);
+          
+          // Crear entrada si hay stock inicial (siempre crear entrada para registrar la compra inicial)
+          if (formData.STOCK > 0) {
+            // Generar número de factura si no existe
+            const nFactura = proveedorData.nFactura && proveedorData.nFactura.trim() !== '' 
+              ? proveedorData.nFactura 
+              : `FAC-${Date.now()}`;
+            
+            const entradaData = {
+              n_factura: nFactura,
+              proveedor: proveedorData.proveedor || 'N/A',
+              fecha: proveedorData.fecha || new Date().toISOString().split('T')[0],
+              cb: String(formData.CB),
+              ci: formData.CI ? String(formData.CI) : null,
+              descripcion: formData.PRODUCTO,
+              cantidad: formData.STOCK, // Usar el stock inicial como cantidad
+              costo: proveedorData.costo || 0,
+              valor_venta: formData.PRECIO,
+              siigo: null,
+              columna1: null,
+            };
+            
+            console.log('✅ Creando entrada para producto nuevo con datos:', entradaData);
+            await apiClient.createEntrada(entradaData);
+            console.log('✅ Entrada creada exitosamente');
+          } else {
+            console.log('⚠️ No se crea entrada porque el stock inicial es 0');
           }
         }
       } else {
@@ -1080,7 +1376,7 @@ export default function Inventory() {
                   </div>
                   <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Precio Unitario</p>
-                    <p className="text-4xl font-semibold text-gray-900 mb-2">${Number(selectedProduct.PRECIO).toFixed(2)}</p>
+                    <p className="text-4xl font-semibold text-gray-900 mb-2">${Number(selectedProduct.PRECIO).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     <p className="text-xs text-gray-500">por unidad</p>
                   </div>
                   
@@ -1089,13 +1385,22 @@ export default function Inventory() {
 
               {/* Botones de Acción */}
               <div className="flex gap-3 justify-between pt-6 border-t border-gray-200">
-                <button
-                  onClick={() => setShowHistorialModal(true)}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
-                >
-                  <History className="w-4 h-4" />
-                  Historial Proveedores
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowHistorialModal(true)}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    Historial Proveedores
+                  </button>
+                  <button
+                    onClick={() => setShowEntradasModal(true)}
+                    className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center gap-2"
+                  >
+                    <Package className="w-4 h-4" />
+                    Datos de Entradas
+                  </button>
+                </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleBackToList}
@@ -1171,15 +1476,26 @@ export default function Inventory() {
                   <option value={100}>100</option>
                 </select>
               </div>
-              {permisos.puedeCrearInventario && (
-                <button
-                  onClick={handleCreate}
-                  className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-medium"
-                >
-                  <Plus className="w-5 h-5" />
-                  Agregar Producto
-                </button>
-              )}
+              <div className="flex gap-3">
+                {selectedProducts.size > 0 && (
+                  <button
+                    onClick={() => setShowPrintMultiple(true)}
+                    className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 font-medium"
+                  >
+                    <Printer className="w-5 h-5" />
+                    Imprimir {selectedProducts.size} Etiquetas
+                  </button>
+                )}
+                {permisos.puedeCrearInventario && (
+                  <button
+                    onClick={handleCreate}
+                    className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-medium"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Agregar Producto
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Filtros específicos */}
@@ -1300,6 +1616,20 @@ export default function Inventory() {
                 <table className="min-w-full w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
+                      <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedProducts.size === currentProducts.length && currentProducts.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedProducts(new Set(currentProducts.map(p => p.CB)));
+                            } else {
+                              setSelectedProducts(new Set());
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                         <button
                           onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -1343,6 +1673,22 @@ export default function Inventory() {
                         key={product.CB}
                         className="border-b border-gray-100 hover:bg-gray-50"
                       >
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedProducts.has(product.CB)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedProducts);
+                              if (e.target.checked) {
+                                newSelected.add(product.CB);
+                              } else {
+                                newSelected.delete(product.CB);
+                              }
+                              setSelectedProducts(newSelected);
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                        </td>
                         <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                           {product.CI || '-'}
                         </td>
@@ -1372,11 +1718,21 @@ export default function Inventory() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                          ${Number(product.PRECIO).toFixed(2)}
+                          ${Number(product.PRECIO).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </td>
                         {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
                           <td className="py-3 px-4">
                             <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setProductToPrint(product);
+                                  setShowPrintLabel(true);
+                                }}
+                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                                title="Imprimir etiqueta"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => handleCopyProduct(product)}
                                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
@@ -1932,15 +2288,15 @@ export default function Inventory() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             Costo
-                            <Tooltip content="Costo de compra al proveedor" />
+                            <Tooltip content="Costo de compra al proveedor (en pesos colombianos)" />
                           </label>
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
+                            step="1"
                             value={proveedorData.costo || ''}
                             onChange={(e) => setProveedorData({ ...proveedorData, costo: parseFloat(e.target.value) || 0 })}
-                            placeholder="Ej: 15.00"
+                            placeholder="Ej: 15000"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
                           />
                         </div>
@@ -1948,12 +2304,12 @@ export default function Inventory() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             Valor Venta *
-                            <Tooltip content="Precio de venta al cliente" />
+                            <Tooltip content="Precio de venta al cliente (en pesos colombianos)" />
                           </label>
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
+                            step="1"
                             required
                             value={formData.PRECIO || ''}
                             readOnly={false}
@@ -1963,7 +2319,7 @@ export default function Inventory() {
                                 PRECIO: parseFloat(e.target.value) || 0,
                               })
                             }
-                            placeholder="Ej: 25.50"
+                            placeholder="Ej: 25000"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
                           />
                         </div>
@@ -1980,12 +2336,12 @@ export default function Inventory() {
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                           Precio de Venta *
-                          <Tooltip content="Precio de venta al cliente" />
+                          <Tooltip content="Precio de venta al cliente (en pesos colombianos)" />
                         </label>
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="1"
                           required
                           value={formData.PRECIO || ''}
                           onChange={(e) =>
@@ -1994,7 +2350,7 @@ export default function Inventory() {
                               PRECIO: parseFloat(e.target.value) || 0,
                             })
                           }
-                          placeholder="Ej: 25.50"
+                          placeholder="Ej: 25000"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
                         />
                       </div>
@@ -2613,7 +2969,7 @@ export default function Inventory() {
           {
             showDeleteDialog && (
               <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[110] animate-in fade-in duration-200"
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[150] animate-in fade-in duration-200"
                 onClick={cancelDelete}
               >
                 <div
@@ -2682,6 +3038,37 @@ export default function Inventory() {
           productoCB={String(selectedProduct.CB)}
           productoNombre={selectedProduct.PRODUCTO}
           onClose={() => setShowHistorialModal(false)}
+        />
+      )}
+
+      {/* Modal de Datos de Entradas */}
+      {showEntradasModal && selectedProduct && (
+        <EntradasModal
+          productoCB={String(selectedProduct.CB)}
+          productoNombre={selectedProduct.PRODUCTO}
+          onClose={() => setShowEntradasModal(false)}
+        />
+      )}
+
+      {/* Modal de Impresión de Etiqueta */}
+      {showPrintLabel && productToPrint && (
+        <PrintLabel
+          product={productToPrint}
+          onClose={() => {
+            setShowPrintLabel(false);
+            setProductToPrint(null);
+          }}
+        />
+      )}
+
+      {/* Modal de Impresión Múltiple */}
+      {showPrintMultiple && selectedProducts.size > 0 && (
+        <PrintMultipleLabels
+          products={products.filter(p => selectedProducts.has(p.CB))}
+          onClose={() => {
+            setShowPrintMultiple(false);
+            setSelectedProducts(new Set());
+          }}
         />
       )}
     </div>

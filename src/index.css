@@ -73,3 +73,41 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Estilos para impresión de etiquetas */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print\:block,
+  .print\:block * {
+    visibility: visible;
+  }
+  
+  .print\:block {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  
+  @page {
+    size: 10cm auto;
+    margin: 0;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+  
+  .page-break:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
