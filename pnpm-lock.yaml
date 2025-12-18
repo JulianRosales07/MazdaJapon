@@ -14,9 +14,6 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
-      jsbarcode:
-        specifier: ^3.12.1
-        version: 3.12.1
       lucide-react:
         specifier: ^0.344.0
         version: 0.344.0(react@18.3.1)
@@ -45,6 +42,9 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
+      '@types/jsbarcode':
+        specifier: ^3.11.4
+        version: 3.11.4
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
@@ -78,6 +78,9 @@ importers:
       globals:
         specifier: ^15.9.0
         version: 15.15.0
+      jsbarcode:
+        specifier: ^3.12.1
+        version: 3.12.1
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -814,6 +817,9 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+
+  '@types/jsbarcode@3.11.4':
+    resolution: {integrity: sha512-VBcpTAnEMH0Gbh8JpV14CgOtJjCYjsvR2FoDRyoYPE0gUxtApf8N4c+HKEOyz/iiIZkMzqrzBA3XX7+KgKxxsA==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -2766,6 +2772,10 @@ snapshots:
   '@types/bcryptjs@2.4.6': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/jsbarcode@3.11.4':
+    dependencies:
+      '@types/node': 24.10.1
 
   '@types/json-schema@7.0.15': {}
 
