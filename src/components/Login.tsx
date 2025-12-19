@@ -4,6 +4,7 @@ import LOGO from '../assets/mazda.png';
 import { LogIn } from 'lucide-react';
 import { DotPattern } from './ui/dot-pattern';
 import { cn } from '@/lib/utils';
+import Snowfall from 'react-snowfall';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -28,6 +29,19 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-gray-950">
+      {/* Snowfall Effect */}
+      <Snowfall
+        color="#fff"
+        snowflakeCount={200}
+        style={{
+          position: 'fixed',
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}
+      />
+      
       {/* Dot Pattern Background */}
       <DotPattern
         className={cn(
