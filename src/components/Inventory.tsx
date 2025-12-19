@@ -197,7 +197,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
           )}
         </div>
 
-        {/* Footer */}
+       {/*  Footer */}
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end">
           <button
             onClick={onClose}
@@ -1477,7 +1477,7 @@ export default function Inventory() {
                 </select>
               </div>
               <div className="flex gap-3">
-                {selectedProducts.size > 0 && (
+              {/*   {selectedProducts.size > 0 && (
                   <button
                     onClick={() => setShowPrintMultiple(true)}
                     className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 font-medium"
@@ -1485,7 +1485,7 @@ export default function Inventory() {
                     <Printer className="w-5 h-5" />
                     Imprimir {selectedProducts.size} Etiquetas
                   </button>
-                )}
+                )}*/}
                 {permisos.puedeCrearInventario && (
                   <button
                     onClick={handleCreate}
@@ -1616,7 +1616,7 @@ export default function Inventory() {
                 <table className="min-w-full w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-12">
+                       {/* <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-12">
                         <input
                           type="checkbox"
                           checked={selectedProducts.size === currentProducts.length && currentProducts.length > 0}
@@ -1629,7 +1629,7 @@ export default function Inventory() {
                           }}
                           className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                         />
-                      </th>
+                      </th> */}
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                         <button
                           onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -1673,7 +1673,7 @@ export default function Inventory() {
                         key={product.CB}
                         className="border-b border-gray-100 hover:bg-gray-50"
                       >
-                        <td className="py-3 px-4 text-center">
+                       {/*  <td className="py-3 px-4 text-center">
                           <input
                             type="checkbox"
                             checked={selectedProducts.has(product.CB)}
@@ -1688,7 +1688,7 @@ export default function Inventory() {
                             }}
                             className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
-                        </td>
+                        </td> */}
                         <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                           {product.CI || '-'}
                         </td>
@@ -1723,7 +1723,7 @@ export default function Inventory() {
                         {(permisos.puedeEditarInventario || permisos.puedeEliminarInventario) && (
                           <td className="py-3 px-4">
                             <div className="flex justify-center gap-2">
-                              <button
+                            {/* <button
                                 onClick={() => {
                                   setProductToPrint(product);
                                   setShowPrintLabel(true);
@@ -1732,7 +1732,7 @@ export default function Inventory() {
                                 title="Imprimir etiqueta"
                               >
                                 <Printer className="w-4 h-4" />
-                              </button>
+                              </button> */}
                               <button
                                 onClick={() => handleCopyProduct(product)}
                                 className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"

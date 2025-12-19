@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar } from 'lucide-react';
+import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar, Tag } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { repuestosAPI, salidasAPI, entradasAPI } from '../lib/api';
+import { apiClient } from '../lib/apiClient';
 
 export default function Exportar() {
   const [loading, setLoading] = useState(false);
   const [exportStatus, setExportStatus] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
+  const [fechaInicioImpresion, setFechaInicioImpresion] = useState<string>('');
+  const [fechaFinImpresion, setFechaFinImpresion] = useState<string>('');
 
   const formatDate = (fecha: any) => {
     if (!fecha) return '';
@@ -135,6 +138,140 @@ export default function Exportar() {
     }
   };
 
+  const exportParaImpresion = async () => {
+    if (!fechaInicioImpresion || !fechaFinImpresion) {
+      setExportStatus('✗ Por favor selecciona ambas fechas');
+      setTimeout(() => setExportStatus(''), 3000);
+      return;
+    }
+
+    setLoading(true);
+    setExportStatus('Exportando datos para impresión...');
+
+    try {
+      // Obtener todas las entradas para filtrar por fecha
+      const entradas = await entradasAPI.getAll();
+      
+      // Filtrar por rango de fechas
+      const entradasFiltradas = entradas.filter(item => {
+        const fechaEntrada = new Date(item.FECHA);
+        const inicio = new Date(fechaInicioImpresion);
+        const fin = new Date(fechaFinImpresion);
+        return fechaEntrada >= inicio && fechaEntrada <= fin;
+      });
+
+      if (entradasFiltradas.length === 0) {
+        setExportStatus('✗ No hay productos en el rango de fechas seleccionado');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
+      // Obtener códigos únicos de productos del rango de fechas
+      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
+      
+      // Obtener todos los productos
+      const inventario = await repuestosAPI.getAll();
+      
+      // Filtrar solo los productos que están en el rango de fechas
+      const productosFiltrados = inventario.filter(p => 
+        codigosUnicos.includes(String(p.CB))
+      );
+
+      if (productosFiltrados.length === 0) {
+        setExportStatus('✗ No hay productos en el inventario para el rango de fechas');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
+      // Obtener proveedores principales para cada producto
+      const productosConProveedor = await Promise.all(
+        productosFiltrados.map(async (producto) => {
+          try {
+            const response = await apiClient.getProveedoresByProducto(String(producto.CB));
+            let comparativas = response;
+            if (response && typeof response === 'object' && 'data' in response) {
+              comparativas = (response as any).data;
+            }
+            
+            let codigoProveedor = '';
+            if (Array.isArray(comparativas)) {
+              const principal = comparativas.find((c: any) => c.es_proveedor_principal);
+              if (principal && principal.proveedores) {
+                // Obtener el código CP del proveedor
+                codigoProveedor = principal.proveedores.cp || '';
+              }
+            }
+            
+            return {
+              CB: producto.CB,
+              CI: producto.CI,
+              PRODUCTO: producto.PRODUCTO,
+              TIPO: producto.TIPO,
+              MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION,
+              REFERENCIA: producto.REFERENCIA,
+              MARCA: producto.MARCA,
+              codigoProveedor
+            };
+          } catch (error) {
+            console.error(`Error obteniendo proveedor para ${producto.CB}:`, error);
+            return {
+              CB: producto.CB,
+              CI: producto.CI,
+              PRODUCTO: producto.PRODUCTO,
+              TIPO: producto.TIPO,
+              MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION,
+              REFERENCIA: producto.REFERENCIA,
+              MARCA: producto.MARCA,
+              codigoProveedor: ''
+            };
+          }
+        })
+      );
+
+      // Crear datos para el Excel con formato para impresión de etiquetas
+      const data = productosConProveedor.map(producto => ({
+        'CB': producto.CB,
+        'CI': producto.CI || '',
+        'PRODUCTO': producto.PRODUCTO || '',
+        'TIPO': producto.TIPO || '',
+        'MODELO/ESPECIFICACIÓN': producto.MODELO_ESPECIFICACION || '',
+        'REFERENCIA': producto.REFERENCIA || '',
+        'MARCA': producto.MARCA || '',
+        'PROVEEDOR': producto.codigoProveedor || '',
+        'FECHA': new Date().toLocaleDateString('es-ES'),
+      }));
+
+      // Crear el libro de Excel
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos Impresión');
+
+      // Ajustar ancho de columnas
+      const maxWidth = 40;
+      const colWidths = Object.keys(data[0]).map(key => {
+        const maxLength = Math.max(
+          key.length,
+          ...data.map(row => String((row as any)[key] || '').length)
+        );
+        return { wch: Math.min(Math.max(maxLength + 2, 10), maxWidth) };
+      });
+      worksheet['!cols'] = colWidths;
+
+      // Descargar el archivo
+      const filename = `Impresion_Etiquetas_${fechaInicioImpresion}_${fechaFinImpresion}.xlsx`;
+      XLSX.writeFile(workbook, filename, { bookType: 'xlsx', type: 'binary' });
+
+      setExportStatus(`✓ ${data.length} productos exportados para impresión`);
+      setTimeout(() => setExportStatus(''), 3000);
+    } catch (error) {
+      console.error('Error exportando para impresión:', error);
+      setExportStatus('✗ Error al exportar datos para impresión');
+      setTimeout(() => setExportStatus(''), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportToExcel = async (type: 'inventario' | 'salidas' | 'entradas') => {
     setLoading(true);
     setExportStatus(`Exportando ${type}...`);
@@ -254,51 +391,100 @@ export default function Exportar() {
         </div>
       )}
 
-      {/* Sección de Productos Nuevos con Filtros de Fecha */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
-            <Calendar className="w-6 h-6 text-blue-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Sección de Productos Nuevos con Filtros de Fecha */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
+              <Calendar className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Productos Nuevos para SIIGO</h3>
+              <p className="text-gray-600 text-sm">Exporta productos ingresados en formato compatible con SIIGO</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Productos Nuevos para SIIGO</h3>
-            <p className="text-gray-600 text-sm">Exporta productos ingresados en formato compatible con SIIGO</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Inicio
+              </label>
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Fin
+              </label>
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
           </div>
+
+          <button
+            onClick={exportProductosNuevos}
+            disabled={loading || !fechaInicio || !fechaFin}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-5 h-5" />
+            Exportar Productos Nuevos
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fecha Inicio
-            </label>
-            <input
-              type="date"
-              value={fechaInicio}
-              onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            />
+        {/* Sección de Exportar para Impresión */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full">
+              <Tag className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Datos para Impresión</h3>
+              <p className="text-gray-600 text-sm">Exporta productos ingresados con datos para etiquetas</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fecha Fin
-            </label>
-            <input
-              type="date"
-              value={fechaFin}
-              onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            />
-          </div>
-        </div>
 
-        <button
-          onClick={exportProductosNuevos}
-          disabled={loading || !fechaInicio || !fechaFin}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="w-5 h-5" />
-          Exportar Productos Nuevos
-        </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Inicio
+              </label>
+              <input
+                type="date"
+                value={fechaInicioImpresion}
+                onChange={(e) => setFechaInicioImpresion(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Fin
+              </label>
+              <input
+                type="date"
+                value={fechaFinImpresion}
+                onChange={(e) => setFechaFinImpresion(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={exportParaImpresion}
+            disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
+            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-5 h-5" />
+            Exportar para Impresión
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -390,6 +576,18 @@ export default function Exportar() {
           <li className="flex items-start gap-2">
             <span className="text-gray-900 mt-0.5">•</span>
             <span>Los productos se filtran por fecha de entrada al sistema y se incluyen campos como Tipo, Categoría, Código de Barras, Marca y Modelo</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-gray-900 mt-0.5">•</span>
+            <span>La exportación para impresión filtra productos por fecha de entrada e incluye todos los datos necesarios para generar etiquetas: códigos, descripción completa y código CP del proveedor principal</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-gray-900 mt-0.5">•</span>
+            <span>El archivo de impresión puede ser usado para importar datos masivos o como respaldo de la información de etiquetas</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-gray-900 mt-0.5">•</span>
+            <span>Ambas exportaciones con filtro de fecha permiten generar archivos específicos para períodos determinados</span>
           </li>
         </ul>
       </div>
