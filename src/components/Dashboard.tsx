@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Package, TrendingUp, AlertCircle, Zap, Activity, ArrowUpRight, ShoppingCart } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import Snowfall from 'react-snowfall';
 
 interface Repuesto {
   CB: string;
@@ -137,6 +138,19 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="h-full bg-gray-50 overflow-auto">
+      {/* Snowfall Effect */}
+      <Snowfall
+        color="#fff"
+        snowflakeCount={200}
+        style={{
+          position: 'fixed',
+          width: '150vw',
+          height: '150vh',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}
+      />
+      
       {/* Hero Section with Image */}
       <div className="relative overflow-hidden bg-[#1a1a1a] text-white min-h-screen">
         {/* Background Image */}
