@@ -395,8 +395,8 @@ export default function Exportar() {
         {/* Sección de Productos Nuevos con Filtros de Fecha */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
-              <Calendar className="w-6 h-6 text-blue-600" />
+            <div className="flex items-center justify-center w-12 h-12 bg-gray-200 rounded-full">
+              <Calendar className="w-6 h-6 text-gray-700" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Productos Nuevos para SIIGO</h3>
@@ -432,7 +432,7 @@ export default function Exportar() {
           <button
             onClick={exportProductosNuevos}
             disabled={loading || !fechaInicio || !fechaFin}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-5 h-5" />
             Exportar Productos Nuevos
@@ -442,8 +442,8 @@ export default function Exportar() {
         {/* Sección de Exportar para Impresión */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full">
-              <Tag className="w-6 h-6 text-purple-600" />
+            <div className="flex items-center justify-center w-12 h-12 bg-gray-200 rounded-full">
+              <Tag className="w-6 h-6 text-gray-700" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Datos para Impresión</h3>
@@ -479,7 +479,7 @@ export default function Exportar() {
           <button
             onClick={exportParaImpresion}
             disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-5 h-5" />
             Exportar para Impresión
