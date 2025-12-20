@@ -841,7 +841,7 @@ export default function Inventory() {
 
   const generateUniqueCB = (ci: string): string => {
     // CB es igual al CI pero con un cero insertado después del primer dígito
-    // Ejemplo: CI = 109393 → CB = 1009393
+    // Ejemplo: CI = 109605 → CB = 1009605
     // Tomar el primer dígito, agregar 0, y luego el resto
     const baseCB = ci.charAt(0) + '0' + ci.slice(1);
     
@@ -967,12 +967,15 @@ export default function Inventory() {
       console.log('✅ Máximo CI:', maxCI);
       console.log('✅ Máximo CB:', maxCB);
       
-      // Generar el siguiente CI y CB
+      // Generar el siguiente CI
       const nextCI = String(maxCI + 1);
-      const nextCB = String(maxCB + 1);
+      
+      // Generar el CB basado en el CI: insertar "0" después del primer dígito
+      // Ejemplo: CI = 109605 → CB = 1009605
+      const nextCB = nextCI.charAt(0) + '0' + nextCI.slice(1);
       
       console.log('✅ Siguiente CI:', nextCI);
-      console.log('✅ Siguiente CB:', nextCB);
+      console.log('✅ Siguiente CB:', nextCB, '(generado insertando "0" después del primer dígito del CI)');
 
       // Actualizar el formulario con los códigos reales
       setFormData(prev => ({
