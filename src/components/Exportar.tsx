@@ -22,6 +22,21 @@ export default function Exportar() {
     }
   };
 
+  // Función para formatear fecha sin problemas de zona horaria
+  const formatDateLocal = (fecha: any) => {
+    if (!fecha) return '';
+    try {
+      // Crear fecha en zona horaria local para evitar el problema de UTC
+      const date = new Date(fecha);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${day}/${month}/${year}`;
+    } catch {
+      return String(fecha);
+    }
+  };
+
   const exportProductosNuevos = async () => {
     if (!fechaInicio || !fechaFin) {
       setExportStatus('✗ Por favor selecciona ambas fechas');
@@ -183,7 +198,7 @@ export default function Exportar() {
         return;
       }
 
-      // Obtener proveedores principales para cada producto
+      // Obtener proveedores principales y fecha de entrada para cada producto
       const productosConProveedor = await Promise.all(
         productosFiltrados.map(async (producto) => {
           try {
@@ -202,6 +217,12 @@ export default function Exportar() {
               }
             }
             
+            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
+            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            const fechaEntrada = entradasProducto.length > 0 
+              ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
+              : formatDateLocal(new Date());
+            
             return {
               CB: producto.CB,
               CI: producto.CI,
@@ -210,10 +231,17 @@ export default function Exportar() {
               MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION,
               REFERENCIA: producto.REFERENCIA,
               MARCA: producto.MARCA,
-              codigoProveedor
+              codigoProveedor,
+              fechaEntrada
             };
           } catch (error) {
             console.error(`Error obteniendo proveedor para ${producto.CB}:`, error);
+            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
+            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            const fechaEntrada = entradasProducto.length > 0 
+              ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
+              : formatDateLocal(new Date());
+            
             return {
               CB: producto.CB,
               CI: producto.CI,
@@ -222,7 +250,8 @@ export default function Exportar() {
               MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION,
               REFERENCIA: producto.REFERENCIA,
               MARCA: producto.MARCA,
-              codigoProveedor: ''
+              codigoProveedor: '',
+              fechaEntrada
             };
           }
         })
@@ -238,7 +267,7 @@ export default function Exportar() {
         'REFERENCIA': producto.REFERENCIA || '',
         'MARCA': producto.MARCA || '',
         'PROVEEDOR': producto.codigoProveedor || '',
-        'FECHA': new Date().toLocaleDateString('es-ES'),
+        'FECHA': producto.fechaEntrada,
       }));
 
       // Crear el libro de Excel
