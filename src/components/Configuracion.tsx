@@ -5,6 +5,7 @@ import type { Usuario, Rol } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
 import Tooltip from './Tooltip';
 import { supabase } from '@/lib/supabase';
+import logo from '../assets/image.png';
 
 export default function Configuracion() {
     const { usuario: currentUser, isAdmin } = useAuth();
@@ -187,8 +188,38 @@ export default function Configuracion() {
     // Pantalla de autenticación
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-8" style={{ backgroundColor: '#f9fafb' }}>
-                <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-8 w-full max-w-md">
+            <div className="min-h-screen flex items-center justify-center p-8 relative overflow-hidden">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <img
+                        src="https://www.mazdausa.com/siteassets/vehicles/2026/mazda3-sedan/01_vlp/001_hero/desktop/2026-m3-sedan-hero-desktop.jpg?w=1800"
+                        alt="Mazda Showroom"
+                        className="w-full h-full object-cover opacity-86"
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                        }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/50"></div>
+                </div>
+
+                {/* Logo Mazda Japón en la parte superior izquierda */}
+                <div className="absolute top-8 left-8 z-20">
+                    <div className="flex items-center gap-4">
+                        <img
+                            src={logo}
+                            alt="Mazda Logo"
+                            className="w-20 h-20 object-contain filter brightness-110"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                            }}
+                        />
+                        <h1 className="text-4xl md:text-5xl font-horizondrift text-white" style={{ letterSpacing: '0.2em' }}>
+                            Mazda Japon
+                        </h1>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-8 w-full max-w-md relative z-10">
                     <div className="flex flex-col items-center mb-6">
                         <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-4">
                             <Lock className="w-8 h-8 text-white" />
@@ -248,14 +279,27 @@ export default function Configuracion() {
     }
 
     return (
-        
-        <div className="p-8">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
-                <p className="text-gray-600">Gestiona los usuarios del sistema</p>
+        <div className="min-h-screen relative overflow-hidden">
+            {/* Background Image */}
+            <div className="absolute inset-0">
+                <img
+                    src="https://www.mazdausa.com/siteassets/vehicles/2026/mazda3-sedan/01_vlp/001_hero/desktop/2026-m3-sedan-hero-desktop.jpg?w=1800"
+                    alt="Mazda Showroom"
+                    className="w-full h-full object-cover opacity-30"
+                    onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                    }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-gray-50/90 to-white/95"></div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="p-8 relative z-10">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
+                    <p className="text-gray-600">Gestiona los usuarios del sistema</p>
+                </div>
+
+                <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center gap-3 mb-6">
                     <Users className="w-6 h-6 text-gray-700" />
                     <h2 className="text-xl font-bold text-gray-900">Gestión de Usuarios</h2>
@@ -374,6 +418,7 @@ export default function Configuracion() {
                         </table>
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Modal */}
