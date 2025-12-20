@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy, History, Printer, Package } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Search, Plus, Edit2, Trash2, X, ArrowUpDown, Eye, ArrowLeft, Copy, History, Printer, Package, Check } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import type { Repuesto, Proveedor } from '../lib/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,118 @@ import AlertDialog from './AlertDialog';
 import HistorialProveedores from './HistorialProveedores';
 import PrintLabel from './PrintLabel';
 import PrintMultipleLabels from './PrintMultipleLabels';
+
+// Componente de búsqueda con dropdown personalizado
+interface SearchableSelectProps {
+  value: string;
+  onChange: (id: number | null, nombre: string) => void;
+  options: Proveedor[];
+  placeholder?: string;
+  label: string;
+}
+
+function SearchableSelect({ value, onChange, options, placeholder = "Buscar...", label }: SearchableSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(value);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSearchTerm(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(option =>
+    option.nombre_proveedor.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelect = (option: Proveedor) => {
+    setSearchTerm(option.nombre_proveedor);
+    onChange(option.id_proveedor, option.nombre_proveedor);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSearchTerm('');
+    onChange(null, '');
+    setIsOpen(true);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 pr-8 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          {/* Opción "Todos" */}
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              onChange(null, '');
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center justify-between border-b border-gray-100"
+          >
+            <span className="text-sm font-medium text-gray-900">Todos los proveedores</span>
+            {!searchTerm && <Check className="w-4 h-4 text-gray-900" />}
+          </button>
+
+          {/* Lista de opciones filtradas */}
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option.id_proveedor}
+                type="button"
+                onClick={() => handleSelect(option)}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 transition flex items-center justify-between"
+              >
+                <span className="text-sm text-gray-700">{option.nombre_proveedor}</span>
+                {searchTerm === option.nombre_proveedor && (
+                  <Check className="w-4 h-4 text-gray-900" />
+                )}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-gray-500 text-center">
+              No se encontraron proveedores
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Componente para mostrar datos de entradas
 interface EntradasModalProps {
@@ -2610,26 +2722,19 @@ export default function Inventory() {
                               <label className="block text-xs font-medium text-gray-600 mb-1">
                                 Nombre
                               </label>
-                              <select
-                                value={proveedor1.id || ''}
-                                onChange={(e) => {
-                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                              <SearchableSelect
+                                value={proveedor1.nombre}
+                                onChange={(id, nombre) => {
                                   setProveedor1({
-                                    id: selectedId,
-                                    nombre: selected?.nombre_proveedor || '',
-                                    precio: proveedor1.precio,
+                                    ...proveedor1,
+                                    id: id,
+                                    nombre: nombre,
                                   });
                                 }}
-                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                              >
-                                <option value="">Seleccionar proveedor</option>
-                                {availableProveedores.map((prov) => (
-                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                    {prov.nombre_proveedor}
-                                  </option>
-                                ))}
-                              </select>
+                                options={availableProveedores}
+                                placeholder="Buscar proveedor..."
+                                label="Proveedor 1"
+                              />
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -2684,26 +2789,19 @@ export default function Inventory() {
                               <label className="block text-xs font-medium text-gray-600 mb-1">
                                 Nombre
                               </label>
-                              <select
-                                value={proveedor2.id || ''}
-                                onChange={(e) => {
-                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                              <SearchableSelect
+                                value={proveedor2.nombre}
+                                onChange={(id, nombre) => {
                                   setProveedor2({
-                                    id: selectedId,
-                                    nombre: selected?.nombre_proveedor || '',
-                                    precio: proveedor2.precio,
+                                    ...proveedor2,
+                                    id: id,
+                                    nombre: nombre,
                                   });
                                 }}
-                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                              >
-                                <option value="">Seleccionar proveedor</option>
-                                {availableProveedores.map((prov) => (
-                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                    {prov.nombre_proveedor}
-                                  </option>
-                                ))}
-                              </select>
+                                options={availableProveedores}
+                                placeholder="Buscar proveedor..."
+                                label="Proveedor 2"
+                              />
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -2758,26 +2856,19 @@ export default function Inventory() {
                               <label className="block text-xs font-medium text-gray-600 mb-1">
                                 Nombre
                               </label>
-                              <select
-                                value={proveedor3.id || ''}
-                                onChange={(e) => {
-                                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
-                                  const selected = availableProveedores.find(p => p.id_proveedor === selectedId);
+                              <SearchableSelect
+                                value={proveedor3.nombre}
+                                onChange={(id, nombre) => {
                                   setProveedor3({
-                                    id: selectedId,
-                                    nombre: selected?.nombre_proveedor || '',
-                                    precio: proveedor3.precio,
+                                    ...proveedor3,
+                                    id: id,
+                                    nombre: nombre,
                                   });
                                 }}
-                                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                              >
-                                <option value="">Seleccionar proveedor</option>
-                                {availableProveedores.map((prov) => (
-                                  <option key={prov.id_proveedor} value={prov.id_proveedor}>
-                                    {prov.nombre_proveedor}
-                                  </option>
-                                ))}
-                              </select>
+                                options={availableProveedores}
+                                placeholder="Buscar proveedor..."
+                                label="Proveedor 3"
+                              />
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">
