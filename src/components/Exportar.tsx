@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar, Tag } from 'lucide-react';
+import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar, Tag, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { repuestosAPI, salidasAPI, entradasAPI } from '../lib/api';
 import { apiClient } from '../lib/apiClient';
@@ -148,6 +148,148 @@ export default function Exportar() {
       console.error('Error exportando productos nuevos:', error);
       setExportStatus('✗ Error al exportar productos nuevos');
       setTimeout(() => setExportStatus(''), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToGoogleSheets = async () => {
+    if (!fechaInicioImpresion || !fechaFinImpresion) {
+      setExportStatus('✗ Por favor selecciona ambas fechas');
+      setTimeout(() => setExportStatus(''), 3000);
+      return;
+    }
+
+    const googleSheetsUrl = import.meta.env.VITE_GOOGLE_SHEETS_URL;
+    if (!googleSheetsUrl || googleSheetsUrl === 'TU_URL_DEL_DEPLOYMENT_AQUI') {
+      setExportStatus('✗ URL de Google Sheets no configurada. Revisa tu archivo .env');
+      setTimeout(() => setExportStatus(''), 5000);
+      return;
+    }
+
+    setLoading(true);
+    setExportStatus('Exportando a Google Sheets...');
+
+    try {
+      // Obtener todas las entradas para filtrar por fecha
+      const entradas = await entradasAPI.getAll();
+      
+      // Filtrar por rango de fechas
+      const entradasFiltradas = entradas.filter(item => {
+        const fechaEntrada = new Date(item.FECHA);
+        const inicio = new Date(fechaInicioImpresion);
+        const fin = new Date(fechaFinImpresion);
+        return fechaEntrada >= inicio && fechaEntrada <= fin;
+      });
+
+      if (entradasFiltradas.length === 0) {
+        setExportStatus('✗ No hay productos en el rango de fechas seleccionado');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
+      // Obtener códigos únicos de productos del rango de fechas
+      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
+      
+      // Obtener todos los productos
+      const inventario = await repuestosAPI.getAll();
+      
+      // Filtrar solo los productos que están en el rango de fechas
+      const productosFiltrados = inventario.filter(p => 
+        codigosUnicos.includes(String(p.CB))
+      );
+
+      if (productosFiltrados.length === 0) {
+        setExportStatus('✗ No hay productos en el inventario para el rango de fechas');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
+      // Obtener proveedores principales y fecha de entrada para cada producto
+      const productosConProveedor = await Promise.all(
+        productosFiltrados.map(async (producto) => {
+          try {
+            const response = await apiClient.getProveedoresByProducto(String(producto.CB));
+            let comparativas = response;
+            if (response && typeof response === 'object' && 'data' in response) {
+              comparativas = (response as any).data;
+            }
+            
+            let codigoProveedor = '';
+            if (Array.isArray(comparativas)) {
+              const principal = comparativas.find((c: any) => c.es_proveedor_principal);
+              if (principal && principal.proveedores) {
+                codigoProveedor = principal.proveedores.cp || '';
+              }
+            }
+            
+            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
+            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            const fechaEntrada = entradasProducto.length > 0 
+              ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
+              : formatDateLocal(new Date());
+            
+            return {
+              CB: producto.CB,
+              CI: producto.CI || '',
+              PRODUCTO: producto.PRODUCTO || '',
+              TIPO: producto.TIPO || '',
+              MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION || '',
+              REFERENCIA: producto.REFERENCIA || '',
+              MARCA: producto.MARCA || '',
+              PROVEEDOR: codigoProveedor,
+              FECHA: fechaEntrada
+            };
+          } catch (error) {
+            console.error(`Error obteniendo proveedor para ${producto.CB}:`, error);
+            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            const fechaEntrada = entradasProducto.length > 0 
+              ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
+              : formatDateLocal(new Date());
+            
+            return {
+              CB: producto.CB,
+              CI: producto.CI || '',
+              PRODUCTO: producto.PRODUCTO || '',
+              TIPO: producto.TIPO || '',
+              MODELO_ESPECIFICACION: producto.MODELO_ESPECIFICACION || '',
+              REFERENCIA: producto.REFERENCIA || '',
+              MARCA: producto.MARCA || '',
+              PROVEEDOR: '',
+              FECHA: fechaEntrada
+            };
+          }
+        })
+      );
+
+      // Enviar datos a Google Sheets
+      console.log('Enviando datos a Google Sheets:', {
+        url: googleSheetsUrl,
+        cantidadProductos: productosConProveedor.length,
+        primerosProductos: productosConProveedor.slice(0, 2)
+      });
+
+      // Usar no-cors para evitar problemas de CORS con Google Apps Script
+      await fetch(googleSheetsUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productos: productosConProveedor
+        })
+      });
+
+      // Con no-cors no podemos verificar la respuesta, pero si no hay error de red, asumimos éxito
+      console.log('Petición enviada exitosamente');
+      setExportStatus(`✓ ${productosConProveedor.length} productos enviados a Google Sheets. Verifica tu hoja.`);
+      setTimeout(() => setExportStatus(''), 5000);
+      
+    } catch (error) {
+      console.error('Error exportando a Google Sheets:', error);
+      setExportStatus('✗ Error al exportar a Google Sheets. Verifica la configuración.');
+      setTimeout(() => setExportStatus(''), 5000);
     } finally {
       setLoading(false);
     }
@@ -505,14 +647,24 @@ export default function Exportar() {
             </div>
           </div>
 
-          <button
-            onClick={exportParaImpresion}
-            disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
-            className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-5 h-5" />
-            Exportar para Impresión
-          </button>
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              onClick={exportParaImpresion}
+              disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-5 h-5" />
+              Descargar Excel
+            </button>
+            <button
+              onClick={exportToGoogleSheets}
+              disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
+              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              Exportar a Google Sheets
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1213,10 +1213,11 @@ export default function Inventory() {
       // Calcular el nuevo stock
       const stockActual = typeof formData.STOCK === 'string' ? parseInt(formData.STOCK) : formData.STOCK;
 
-      // FIX: Para productos existentes, mantenemos el stock actual y dejamos que el trigger 'trigger_actualizar_stock_entrada'
-      // sume la cantidad automáticamente al crear la entrada.
-      const nuevoStock = isExistingProduct
-        ? stockActual
+      // FIX: Para productos nuevos, guardamos stock en 0 y dejamos que el trigger lo actualice al crear la entrada
+      // Para productos existentes, mantenemos el stock actual (el trigger sumará la nueva entrada)
+      // Para edición, aplicamos las entradas/salidas manualmente
+      const nuevoStock = modalMode === 'create'
+        ? 0  // Siempre 0 para productos nuevos, el trigger lo actualizará
         : (modalMode === 'edit' ? stockActual + entradaStock - salidaStock : stockActual);
 
       // Convertir campos a minúsculas para el backend
