@@ -1537,8 +1537,26 @@ export default function Inventory() {
 
       if (modalMode === 'create') {
         if (isExistingProduct) {
-          // Actualizar producto existente con nuevo stock
-          await apiClient.updateRepuesto(String(formData.CB), dataToSave);
+          // Para producto existente, NO actualizamos el stock directamente
+          // El stock se actualizará automáticamente cuando se cree la entrada (trigger en BD)
+          // Solo actualizamos el precio si cambió
+          const dataToUpdate = {
+            cb: formData.CB,
+            ci: formData.CI,
+            producto: formData.PRODUCTO,
+            tipo: formData.TIPO,
+            modelo_especificacion: formData.MODELO_ESPECIFICACION,
+            referencia: formData.REFERENCIA,
+            marca: formData.MARCA,
+            existencias_iniciales: formData.EXISTENCIAS_INICIALES,
+            stock: stockActual, // Mantener el stock actual, el trigger lo actualizará
+            precio: formData.PRECIO,
+            descripcion_larga: formData.DESCRIPCION_LARGA,
+            estante: formData.ESTANTE,
+            nivel: formData.NIVEL,
+          };
+          
+          await apiClient.updateRepuesto(String(formData.CB), dataToUpdate);
 
           // Guardar comparativas para producto existente
           const hayProveedores = proveedor1.id || proveedor2.id || proveedor3.id;
@@ -1550,7 +1568,7 @@ export default function Inventory() {
             }
           }
 
-          // Crear entrada si hay datos de proveedor
+          // Crear entrada si hay datos de proveedor (OBLIGATORIO para producto existente)
           if (proveedorData.cantidad > 0) {
             // Generar número de factura si no existe
             const nFactura = proveedorData.nFactura && proveedorData.nFactura.trim() !== '' 
@@ -1564,7 +1582,7 @@ export default function Inventory() {
               cb: String(formData.CB),
               ci: formData.CI ? String(formData.CI) : null,
               descripcion: formData.PRODUCTO,
-              cantidad: proveedorData.cantidad,
+              cantidad: proveedorData.cantidad, // Esta cantidad se SUMARÁ al stock actual por el trigger
               costo: proveedorData.costo,
               valor_venta: formData.PRECIO,
               siigo: null,
@@ -1572,6 +1590,9 @@ export default function Inventory() {
             };
             
             console.log('Creando entrada con datos:', entradaData);
+            console.log('Stock actual antes de entrada:', stockActual);
+            console.log('Cantidad a agregar:', proveedorData.cantidad);
+            console.log('Stock esperado después:', stockActual + proveedorData.cantidad);
             await apiClient.createEntrada(entradaData);
           }
         } else {

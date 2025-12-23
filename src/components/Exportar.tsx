@@ -9,8 +9,7 @@ export default function Exportar() {
   const [exportStatus, setExportStatus] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
-  const [fechaInicioImpresion, setFechaInicioImpresion] = useState<string>('');
-  const [fechaFinImpresion, setFechaFinImpresion] = useState<string>('');
+  const [codigosCIImpresion, setCodigosCIImpresion] = useState<string>('');
 
   const formatDate = (fecha: any) => {
     if (!fecha) return '';
@@ -283,8 +282,8 @@ export default function Exportar() {
   };
 
   const exportToGoogleSheets = async () => {
-    if (!fechaInicioImpresion || !fechaFinImpresion) {
-      setExportStatus('✗ Por favor selecciona ambas fechas');
+    if (!codigosCIImpresion || codigosCIImpresion.trim() === '') {
+      setExportStatus('✗ Por favor ingresa al menos un código CI');
       setTimeout(() => setExportStatus(''), 3000);
       return;
     }
@@ -300,41 +299,36 @@ export default function Exportar() {
     setExportStatus('Exportando a Google Sheets...');
 
     try {
-      // Obtener todas las entradas para filtrar por fecha
-      const entradas = await entradasAPI.getAll();
-      
-      // Filtrar por rango de fechas
-      const entradasFiltradas = entradas.filter(item => {
-        const fechaEntrada = new Date(item.FECHA);
-        const inicio = new Date(fechaInicioImpresion);
-        const fin = new Date(fechaFinImpresion);
-        return fechaEntrada >= inicio && fechaEntrada <= fin;
-      });
+      // Procesar los códigos CI ingresados (separados por comas, espacios o saltos de línea)
+      const codigosArray = codigosCIImpresion
+        .split(/[\n,]+/)
+        .map(ci => ci.trim())
+        .filter(ci => ci !== '');
 
-      if (entradasFiltradas.length === 0) {
-        setExportStatus('✗ No hay productos en el rango de fechas seleccionado');
+      if (codigosArray.length === 0) {
+        setExportStatus('✗ No se encontraron códigos CI válidos');
         setTimeout(() => setExportStatus(''), 3000);
         return;
       }
 
-      // Obtener códigos únicos de productos del rango de fechas
-      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
-      
       // Obtener todos los productos
       const inventario = await repuestosAPI.getAll();
       
-      // Filtrar solo los productos que están en el rango de fechas
+      // Filtrar productos por los códigos CI ingresados
       const productosFiltrados = inventario.filter(p => 
-        codigosUnicos.includes(String(p.CB))
+        codigosArray.includes(String(p.CI))
       );
 
       if (productosFiltrados.length === 0) {
-        setExportStatus('✗ No hay productos en el inventario para el rango de fechas');
+        setExportStatus('✗ No se encontraron productos con los códigos CI ingresados');
         setTimeout(() => setExportStatus(''), 3000);
         return;
       }
 
-      // Obtener proveedores principales y fecha de entrada para cada producto
+      // Obtener todas las entradas para buscar fechas
+      const entradas = await entradasAPI.getAll();
+
+      // Obtener proveedores principales para cada producto
       const productosConProveedor = await Promise.all(
         productosFiltrados.map(async (producto) => {
           try {
@@ -352,8 +346,8 @@ export default function Exportar() {
               }
             }
             
-            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
-            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            // Obtener la fecha de entrada más reciente del producto
+            const entradasProducto = entradas.filter(e => String(e.CB) === String(producto.CB));
             const fechaEntrada = entradasProducto.length > 0 
               ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
               : formatDateLocal(new Date());
@@ -371,7 +365,9 @@ export default function Exportar() {
             };
           } catch (error) {
             console.error(`Error obteniendo proveedor para ${producto.CB}:`, error);
-            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            
+            // Obtener la fecha de entrada más reciente del producto
+            const entradasProducto = entradas.filter(e => String(e.CB) === String(producto.CB));
             const fechaEntrada = entradasProducto.length > 0 
               ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
               : formatDateLocal(new Date());
@@ -425,8 +421,8 @@ export default function Exportar() {
   };
 
   const exportParaImpresion = async () => {
-    if (!fechaInicioImpresion || !fechaFinImpresion) {
-      setExportStatus('✗ Por favor selecciona ambas fechas');
+    if (!codigosCIImpresion || codigosCIImpresion.trim() === '') {
+      setExportStatus('✗ Por favor ingresa al menos un código CI');
       setTimeout(() => setExportStatus(''), 3000);
       return;
     }
@@ -435,41 +431,36 @@ export default function Exportar() {
     setExportStatus('Exportando datos para impresión...');
 
     try {
-      // Obtener todas las entradas para filtrar por fecha
-      const entradas = await entradasAPI.getAll();
-      
-      // Filtrar por rango de fechas
-      const entradasFiltradas = entradas.filter(item => {
-        const fechaEntrada = new Date(item.FECHA);
-        const inicio = new Date(fechaInicioImpresion);
-        const fin = new Date(fechaFinImpresion);
-        return fechaEntrada >= inicio && fechaEntrada <= fin;
-      });
+      // Procesar los códigos CI ingresados (separados por comas, espacios o saltos de línea)
+      const codigosArray = codigosCIImpresion
+        .split(/[\n,]+/)
+        .map(ci => ci.trim())
+        .filter(ci => ci !== '');
 
-      if (entradasFiltradas.length === 0) {
-        setExportStatus('✗ No hay productos en el rango de fechas seleccionado');
+      if (codigosArray.length === 0) {
+        setExportStatus('✗ No se encontraron códigos CI válidos');
         setTimeout(() => setExportStatus(''), 3000);
         return;
       }
 
-      // Obtener códigos únicos de productos del rango de fechas
-      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
-      
       // Obtener todos los productos
       const inventario = await repuestosAPI.getAll();
       
-      // Filtrar solo los productos que están en el rango de fechas
+      // Filtrar productos por los códigos CI ingresados
       const productosFiltrados = inventario.filter(p => 
-        codigosUnicos.includes(String(p.CB))
+        codigosArray.includes(String(p.CI))
       );
 
       if (productosFiltrados.length === 0) {
-        setExportStatus('✗ No hay productos en el inventario para el rango de fechas');
+        setExportStatus('✗ No se encontraron productos con los códigos CI ingresados');
         setTimeout(() => setExportStatus(''), 3000);
         return;
       }
 
-      // Obtener proveedores principales y fecha de entrada para cada producto
+      // Obtener todas las entradas para buscar fechas
+      const entradas = await entradasAPI.getAll();
+
+      // Obtener proveedores principales para cada producto
       const productosConProveedor = await Promise.all(
         productosFiltrados.map(async (producto) => {
           try {
@@ -488,8 +479,8 @@ export default function Exportar() {
               }
             }
             
-            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
-            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            // Obtener la fecha de entrada más reciente del producto
+            const entradasProducto = entradas.filter(e => String(e.CB) === String(producto.CB));
             const fechaEntrada = entradasProducto.length > 0 
               ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
               : formatDateLocal(new Date());
@@ -507,8 +498,9 @@ export default function Exportar() {
             };
           } catch (error) {
             console.error(`Error obteniendo proveedor para ${producto.CB}:`, error);
-            // Obtener la fecha de entrada más reciente del producto en el rango seleccionado
-            const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(producto.CB));
+            
+            // Obtener la fecha de entrada más reciente del producto
+            const entradasProducto = entradas.filter(e => String(e.CB) === String(producto.CB));
             const fechaEntrada = entradasProducto.length > 0 
               ? formatDateLocal(entradasProducto[entradasProducto.length - 1].FECHA)
               : formatDateLocal(new Date());
@@ -558,7 +550,7 @@ export default function Exportar() {
       worksheet['!cols'] = colWidths;
 
       // Descargar el archivo
-      const filename = `Impresion_Etiquetas_${fechaInicioImpresion}_${fechaFinImpresion}.xlsx`;
+      const filename = `Impresion_Etiquetas_${Date.now()}.xlsx`;
       XLSX.writeFile(workbook, filename, { bookType: 'xlsx', type: 'binary' });
 
       setExportStatus(`✓ ${data.length} productos exportados para impresión`);
@@ -757,39 +749,30 @@ export default function Exportar() {
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Datos para Impresión</h3>
-              <p className="text-gray-600 text-sm">Exporta productos ingresados con datos para etiquetas</p>
+              <p className="text-gray-600 text-sm">Exporta productos por código CI para etiquetas</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Inicio
-              </label>
-              <input
-                type="date"
-                value={fechaInicioImpresion}
-                onChange={(e) => setFechaInicioImpresion(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Fin
-              </label>
-              <input
-                type="date"
-                value={fechaFinImpresion}
-                onChange={(e) => setFechaFinImpresion(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Códigos CI (separados por comas o líneas)
+            </label>
+            <textarea
+              value={codigosCIImpresion}
+              onChange={(e) => setCodigosCIImpresion(e.target.value)}
+              placeholder="Ejemplo: CI001, CI002, CI003&#10;o uno por línea"
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Puedes ingresar múltiples códigos separados por comas o uno por línea
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3">
             <button
               onClick={exportParaImpresion}
-              disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
+              disabled={loading || !codigosCIImpresion.trim()}
               className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-5 h-5" />
@@ -797,7 +780,7 @@ export default function Exportar() {
             </button>
             <button
               onClick={exportToGoogleSheets}
-              disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
+              disabled={loading || !codigosCIImpresion.trim()}
               className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
