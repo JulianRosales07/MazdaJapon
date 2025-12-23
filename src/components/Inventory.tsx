@@ -135,6 +135,12 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
   const [entradas, setEntradas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingEntrada, setEditingEntrada] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [entradaToDelete, setEntradaToDelete] = useState<number | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
     fetchEntradas();
@@ -160,6 +166,13 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
         return;
       }
       
+      // Debug: mostrar la estructura de la primera entrada
+      if (data.length > 0) {
+        console.log('=== DEBUG ENTRADAS ===');
+        console.log('Primera entrada completa:', data[0]);
+        console.log('Campos disponibles:', Object.keys(data[0]));
+      }
+      
       // Filtrar entradas por CB
       const entradasFiltradas = data.filter((entrada: any) => {
         const entraCB = String(entrada.cb || entrada.CB || '');
@@ -173,12 +186,101 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
         return fechaB - fechaA;
       });
       
+      console.log('Entradas filtradas:', entradasFiltradas.length);
+      if (entradasFiltradas.length > 0) {
+        console.log('Primera entrada filtrada:', entradasFiltradas[0]);
+      }
+      
       setEntradas(entradasFiltradas);
     } catch (error) {
       console.error('Error fetching entradas:', error);
       setError('No se pudieron cargar los datos de entradas');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = (entrada: any) => {
+    // La fecha ya viene en formato YYYY-MM-DD desde el backend
+    // Solo necesitamos asegurarnos de que se mantenga ese formato
+    const fecha = entrada.fecha || entrada.FECHA;
+    
+    console.log('=== EDITANDO ENTRADA ===');
+    console.log('Fecha original:', fecha);
+    console.log('Entrada completa:', entrada);
+    
+    setEditingEntrada({
+      ...entrada,
+      fecha: fecha, // Mantener el formato original YYYY-MM-DD
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (id: number) => {
+    setEntradaToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!entradaToDelete) return;
+
+    try {
+      await apiClient.deleteEntrada(entradaToDelete);
+      setToastMessage('Entrada eliminada correctamente');
+      setShowToast(true);
+      setShowDeleteDialog(false);
+      setEntradaToDelete(null);
+      await fetchEntradas();
+    } catch (error: any) {
+      console.error('Error deleting entrada:', error);
+      setToastMessage(`Error al eliminar: ${error?.message || 'Error desconocido'}`);
+      setShowToast(true);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEntrada) return;
+
+    try {
+      // Debug: ver qué campos tiene la entrada
+      console.log('Entrada a editar:', editingEntrada);
+      console.log('Campos disponibles:', Object.keys(editingEntrada));
+      
+      // El campo ID es simplemente 'id' en minúscula
+      const id = editingEntrada.id || 
+                 editingEntrada.ID || 
+                 editingEntrada.id_entrada || 
+                 editingEntrada.ID_ENTRADA;
+      
+      if (!id) {
+        throw new Error('No se pudo obtener el ID de la entrada');
+      }
+      
+      console.log('ID de entrada:', id);
+      console.log('Fecha a enviar:', editingEntrada.fecha);
+      
+      await apiClient.updateEntrada(id, {
+        n_factura: editingEntrada.n_factura || editingEntrada.N_FACTURA,
+        proveedor: editingEntrada.proveedor || editingEntrada.PROVEEDOR,
+        fecha: editingEntrada.fecha || editingEntrada.FECHA,
+        cb: editingEntrada.cb || editingEntrada.CB,
+        ci: editingEntrada.ci || editingEntrada.CI,
+        descripcion: editingEntrada.descripcion || editingEntrada.DESCRIPCION,
+        cantidad: Number(editingEntrada.cantidad || editingEntrada.CANTIDAD),
+        costo: Number(editingEntrada.costo || editingEntrada.COSTO),
+        valor_venta: Number(editingEntrada.valor_venta || editingEntrada.VALOR_VENTA),
+      });
+      
+      setToastMessage('Entrada actualizada correctamente');
+      setShowToast(true);
+      setShowEditModal(false);
+      setEditingEntrada(null);
+      await fetchEntradas();
+    } catch (error: any) {
+      console.error('Error updating entrada:', error);
+      setToastMessage(`Error al actualizar: ${error?.message || 'Error desconocido'}`);
+      setShowToast(true);
     }
   };
 
@@ -209,7 +311,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
         {/* Contenido */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           {loading ? (
-            <TableSkeleton rows={5} columns={7} />
+            <TableSkeleton rows={5} columns={8} />
           ) : error ? (
             <div className="text-center py-12">
               <div className="text-red-600 mb-2">
@@ -235,6 +337,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
                     <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Costo Unitario</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Costo Total</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Valor Venta</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,6 +349,28 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
                     const costo = Number(entrada.costo || entrada.COSTO || 0);
                     const valorVenta = Number(entrada.valor_venta || entrada.VALOR_VENTA || 0);
                     const costoTotal = cantidad * costo;
+                    // El campo ID es simplemente 'id' en minúscula
+                    const id = entrada.id || entrada.ID || entrada.id_entrada || entrada.ID_ENTRADA;
+
+                    // Debug: mostrar el objeto completo en consola la primera vez
+                    if (index === 0) {
+                      console.log('Primera entrada:', entrada);
+                      console.log('Campos disponibles:', Object.keys(entrada));
+                      console.log('ID obtenido:', id);
+                    }
+                    
+                    // Convertir fecha YYYY-MM-DD a fecha local sin cambio de zona horaria
+                    let fechaFormateada = '-';
+                    if (fecha) {
+                      // Parsear la fecha como local (no UTC)
+                      const [year, month, day] = fecha.split('T')[0].split('-');
+                      const fechaLocal = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      fechaFormateada = fechaLocal.toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                      });
+                    }
 
                     return (
                       <tr
@@ -253,11 +378,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
                         className="border-b border-gray-100 hover:bg-gray-50 transition"
                       >
                         <td className="py-3 px-4 text-sm text-gray-900">
-                          {fecha ? new Date(fecha).toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit'
-                          }) : '-'}
+                          {fechaFormateada}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900 font-mono">
                           {nFactura || '-'}
@@ -276,6 +397,24 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
                         </td>
                         <td className="py-3 px-4 text-sm text-green-700 text-right font-medium">
                           ${valorVenta.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(entrada)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                              title="Editar"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -299,7 +438,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
                         return sum + (cantidad * costo);
                       }, 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                    <td colSpan={2} className="py-3 px-4 text-sm text-gray-900 text-right">
                       -
                     </td>
                   </tr>
@@ -309,7 +448,7 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
           )}
         </div>
 
-       {/*  Footer */}
+        {/* Footer */}
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end">
           <button
             onClick={onClose}
@@ -319,6 +458,165 @@ function EntradasModal({ productoCB, productoNombre, onClose }: EntradasModalPro
           </button>
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      {showEditModal && editingEntrada && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[130]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="bg-blue-600 px-6 py-4 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-white">Editar Entrada</h3>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    N° Factura
+                  </label>
+                  <input
+                    type="text"
+                    value={editingEntrada.n_factura || editingEntrada.N_FACTURA || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, n_factura: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Proveedor
+                  </label>
+                  <input
+                    type="text"
+                    value={editingEntrada.proveedor || editingEntrada.PROVEEDOR || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, proveedor: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha
+                  </label>
+                  <input
+                    type="date"
+                    value={editingEntrada.fecha || editingEntrada.FECHA || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, fecha: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cantidad
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingEntrada.cantidad || editingEntrada.CANTIDAD || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, cantidad: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Costo Unitario
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingEntrada.costo || editingEntrada.COSTO || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, costo: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor Venta
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingEntrada.valor_venta || editingEntrada.VALOR_VENTA || ''}
+                    onChange={(e) => setEditingEntrada({ ...editingEntrada, valor_venta: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium"
+                >
+                  Guardar Cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingEntrada(null);
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de Confirmación de Eliminación */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[130]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex justify-center pt-8 pb-4">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
+
+            <div className="px-8 pb-6 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Eliminar entrada
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                ¿Estás seguro de que deseas eliminar esta entrada? Esta acción no se puede deshacer y afectará el stock del producto.
+              </p>
+            </div>
+
+            <div className="flex gap-3 px-6 pb-6">
+              <button
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setEntradaToDelete(null);
+                }}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors duration-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-200"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 }
