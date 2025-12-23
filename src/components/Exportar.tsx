@@ -722,14 +722,7 @@ export default function Exportar() {
           </div>
 
           <div className="grid grid-cols-1 gap-3">
-            <button
-              onClick={exportProductosNuevos}
-              disabled={loading || !fechaInicio || !fechaFin}
-              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-5 h-5" />
-              Descargar Excel
-            </button>
+
             <button
               onClick={exportProductosNuevosToSheets}
               disabled={loading || !fechaInicio || !fechaFin}
@@ -770,14 +763,7 @@ export default function Exportar() {
           </div>
 
           <div className="grid grid-cols-1 gap-3">
-            <button
-              onClick={exportParaImpresion}
-              disabled={loading || !codigosCIImpresion.trim()}
-              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-5 h-5" />
-              Descargar Excel
-            </button>
+
             <button
               onClick={exportToGoogleSheets}
               disabled={loading || !codigosCIImpresion.trim()}
