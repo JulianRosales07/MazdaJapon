@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar, Tag, Upload } from 'lucide-react';
+import { Download, FileSpreadsheet, Package, TrendingDown, TrendingUp, Calendar, Tag, Upload, ExternalLink } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { repuestosAPI, salidasAPI, entradasAPI } from '../lib/api';
 import { apiClient } from '../lib/apiClient';
@@ -34,6 +34,135 @@ export default function Exportar() {
       return `${day}/${month}/${year}`;
     } catch {
       return String(fecha);
+    }
+  };
+
+  const exportProductosNuevosToSheets = async () => {
+    if (!fechaInicio || !fechaFin) {
+      setExportStatus('✗ Por favor selecciona ambas fechas');
+      setTimeout(() => setExportStatus(''), 3000);
+      return;
+    }
+
+    const googleSheetsUrl = import.meta.env.VITE_GOOGLE_SHEETS_URL;
+    if (!googleSheetsUrl || googleSheetsUrl === 'TU_URL_DEL_DEPLOYMENT_AQUI') {
+      setExportStatus('✗ URL de Google Sheets no configurada. Revisa tu archivo .env');
+      setTimeout(() => setExportStatus(''), 5000);
+      return;
+    }
+
+    setLoading(true);
+    setExportStatus('Exportando productos SIIGO a Google Sheets...');
+
+    try {
+      // Obtener todas las entradas
+      const entradas = await entradasAPI.getAll();
+      
+      // Filtrar por rango de fechas
+      const entradasFiltradas = entradas.filter(item => {
+        const fechaEntrada = new Date(item.FECHA);
+        const inicio = new Date(fechaInicio);
+        const fin = new Date(fechaFin);
+        return fechaEntrada >= inicio && fechaEntrada <= fin;
+      });
+
+      if (entradasFiltradas.length === 0) {
+        setExportStatus('✗ No hay productos nuevos en el rango de fechas seleccionado');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
+
+      // Obtener códigos únicos de productos
+      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
+      
+      // Obtener información completa de los productos
+      const inventario = await repuestosAPI.getAll();
+      const productosMap = new Map(inventario.map(p => [String(p.CB), p]));
+
+      // Crear datos para el formato SIIGO
+      const data = codigosUnicos.map(cb => {
+        const producto = productosMap.get(String(cb));
+        const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(cb));
+        const precioVenta = Number(producto?.PRECIO || 0);
+        
+        // Combinar Producto, Tipo y Modelo/Especificación
+        const nombreProducto = producto?.PRODUCTO || entradasProducto[0]?.DESCRIPCION || '';
+        const tipo = producto?.TIPO || '';
+        const modelo = producto?.MODELO_ESPECIFICACION || '';
+        
+        const nombreCompleto = [nombreProducto, tipo, modelo]
+          .filter(campo => campo && campo.trim() !== '')
+          .join(' - ');
+        
+        return {
+          'Tipo de Producto': 'P-Producto',
+          'Categoría de Inventarios / Servicios': '1-Productos',
+          'Código del Producto': producto?.CI || cb,
+          'Nombre del Producto / Servicio': nombreCompleto,
+          '¿Inventariable?': 'Si',
+          'Visible en facturas de venta': 'Si',
+          'Stock mínimo': '',
+          'Unidad de medida DIAN': '94',
+          'Unidad de Medida Impresión Factura': '',
+          'Referencia de Fábrica': producto?.REFERENCIA || '',
+          'Código de Barras': cb,
+          'Descripción Larga': '',
+          'Código Impuesto Retención': '',
+          'Código Impuesto Cargo': '1-IVA 19%',
+          'Valor Impuesto Cargo Dos': '',
+          '¿Incluye IVA en Precio de Venta?': 'Si',
+          'Precio de venta 1': precioVenta,
+          'Precio de venta 2': '',
+          'Precio de venta 3': '',
+          'Precio de venta 4': '',
+          'Precio de venta 5': '',
+          'Precio de venta 6': '',
+          'Precio de venta 7': '',
+          'Precio de venta 8': '',
+          'Precio de venta 9': '',
+          'Precio de venta 10': '',
+          'Precio de venta 11': '',
+          'Precio de venta 12': '',
+          'Código Arancelario': '',
+          'Marca': '',
+          'Modelo': '',
+        };
+      });
+
+      // Enviar datos a Google Sheets
+      console.log('Enviando datos SIIGO a Google Sheets:', {
+        url: googleSheetsUrl,
+        cantidadProductos: data.length,
+        primerProducto: data[0]
+      });
+
+      try {
+        await fetch(googleSheetsUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            productos: data
+          })
+        });
+
+        console.log('Petición SIIGO enviada exitosamente');
+        setExportStatus(`✓ ${data.length} productos SIIGO enviados a Google Sheets. Verifica la pestaña SIIGO.`);
+      } catch (fetchError) {
+        console.error('Error en fetch:', fetchError);
+        throw fetchError;
+      }
+      
+      setTimeout(() => setExportStatus(''), 5000);
+      
+    } catch (error) {
+      console.error('Error exportando SIIGO a Google Sheets:', error);
+      setExportStatus('✗ Error al exportar SIIGO a Google Sheets.');
+      setTimeout(() => setExportStatus(''), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,12 +223,12 @@ export default function Exportar() {
           'Nombre del Producto / Servicio': nombreCompleto,
           '¿Inventariable?': 'Si',
           'Visible en facturas de venta': 'Si',
-          'Stock mínimo': 1,
+          'Stock mínimo': '',
           'Unidad de medida DIAN': '94',
           'Unidad de Medida Impresión Factura': '',
           'Referencia de Fábrica': producto?.REFERENCIA || '',
           'Código de Barras': cb,
-          'Descripción Larga': producto?.DESCRIPCION_LARGA || producto?.PRODUCTO || '',
+          'Descripción Larga': '',
           'Código Impuesto Retención': '',
           'Código Impuesto Cargo': '1-IVA 19%',
           'Valor Impuesto Cargo Dos': '',
@@ -117,8 +246,8 @@ export default function Exportar() {
           'Precio de venta 11': '',
           'Precio de venta 12': '',
           'Código Arancelario': '',
-          'Marca': producto?.MARCA || '',
-          'Modelo': producto?.MODELO_ESPECIFICACION || '',
+          'Marca': '',
+          'Modelo': '',
         };
       });
 
@@ -600,14 +729,24 @@ export default function Exportar() {
             </div>
           </div>
 
-          <button
-            onClick={exportProductosNuevos}
-            disabled={loading || !fechaInicio || !fechaFin}
-            className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="w-5 h-5" />
-            Exportar Productos Nuevos
-          </button>
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              onClick={exportProductosNuevos}
+              disabled={loading || !fechaInicio || !fechaFin}
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-5 h-5" />
+              Descargar Excel
+            </button>
+            <button
+              onClick={exportProductosNuevosToSheets}
+              disabled={loading || !fechaInicio || !fechaFin}
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              Exportar a Google Sheets
+            </button>
+          </div>
         </div>
 
         {/* Sección de Exportar para Impresión */}
@@ -659,11 +798,20 @@ export default function Exportar() {
             <button
               onClick={exportToGoogleSheets}
               disabled={loading || !fechaInicioImpresion || !fechaFinImpresion}
-              className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
               Exportar a Google Sheets
             </button>
+            <a
+              href={import.meta.env.VITE_GOOGLE_SHEETS_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition flex items-center justify-center gap-2 font-medium"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Ir al Google Sheet
+            </a>
           </div>
         </div>
       </div>
