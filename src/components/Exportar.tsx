@@ -199,6 +199,7 @@ export default function Exportar() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            tipo: 'SIIGO',
             productos: data
           })
         });
@@ -533,6 +534,7 @@ export default function Exportar() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          tipo: 'IMPRESION',
           productos: productosConProveedor
         })
       });
