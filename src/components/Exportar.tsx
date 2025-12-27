@@ -71,18 +71,70 @@ export default function Exportar() {
         return;
       }
 
-      // Obtener códigos únicos de productos
-      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
+      // Obtener códigos únicos de CI (no CB) de las entradas
+      const codigosUnicos = [...new Set(
+        entradasFiltradas
+          .filter(e => e.CI) // Solo entradas que tienen CI
+          .map(e => String(e.CI))
+      )];
+      
+      if (codigosUnicos.length === 0) {
+        setExportStatus('✗ No hay productos con código CI en el rango de fechas seleccionado');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
       
       // Obtener información completa de los productos
       const inventario = await repuestosAPI.getAll();
-      const productosMap = new Map(inventario.map(p => [String(p.CB), p]));
+      
+      // Detectar duplicados de CI
+      const ciCounts = new Map<string, number>();
+      inventario.forEach(p => {
+        if (p.CI) {
+          const ci = String(p.CI);
+          ciCounts.set(ci, (ciCounts.get(ci) || 0) + 1);
+        }
+      });
+      
+      const duplicados = Array.from(ciCounts.entries()).filter(([_, count]) => count > 1);
+      if (duplicados.length > 0) {
+        console.warn('⚠️ ADVERTENCIA: Se encontraron CIs duplicados en el inventario:', duplicados);
+      }
+      
+      // Crear mapa por CI (no por CB)
+      // Si hay duplicados, el Map solo guardará el último
+      const productosMap = new Map(
+        inventario
+          .filter(p => p.CI)
+          .map(p => [String(p.CI).trim(), p])
+      );
+      
+      console.log('Total productos en mapa:', productosMap.size);
+      console.log('Ejemplo de CIs en mapa:', Array.from(productosMap.keys()).slice(0, 10));
 
       // Crear datos para el formato SIIGO
-      const data = codigosUnicos.map(cb => {
-        const producto = productosMap.get(String(cb));
-        const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(cb));
+      const data = codigosUnicos.map(ci => {
+        const ciNormalizado = String(ci).trim();
+        const producto = productosMap.get(ciNormalizado);
+        const entradasProducto = entradasFiltradas.filter(e => String(e.CI).trim() === ciNormalizado);
         const precioVenta = Number(producto?.PRECIO || 0);
+        
+        // Debug: verificar mapeo de códigos
+        console.log('=== PROCESANDO CI:', ciNormalizado, '===');
+        console.log('Producto encontrado:', !!producto);
+        if (producto) {
+          console.log('  Inventario - PRODUCTO:', producto.PRODUCTO);
+          console.log('  Inventario - TIPO:', producto.TIPO);
+          console.log('  Inventario - MODELO:', producto.MODELO_ESPECIFICACION);
+          console.log('  Inventario - CB:', producto.CB);
+        } else {
+          console.warn('  ⚠️ NO SE ENCONTRÓ PRODUCTO EN INVENTARIO');
+        }
+        console.log('Entradas encontradas:', entradasProducto.length);
+        if (entradasProducto[0]) {
+          console.log('  Entrada - DESCRIPCION:', entradasProducto[0].DESCRIPCION);
+          console.log('  Entrada - CB:', entradasProducto[0].CB);
+        }
         
         // Combinar Producto, Tipo y Modelo/Especificación
         const nombreProducto = producto?.PRODUCTO || entradasProducto[0]?.DESCRIPCION || '';
@@ -93,10 +145,14 @@ export default function Exportar() {
           .filter(campo => campo && campo.trim() !== '')
           .join(' - ');
         
+        // Usar el CI directamente (ya es string)
+        const codigoCI = String(ci);
+        const codigoCB = String(producto?.CB || '');
+        
         return {
           'Tipo de Producto': 'P-Producto',
           'Categoría de Inventarios / Servicios': '1-Productos',
-          'Código del Producto': producto?.CI || cb,
+          'Código del Producto': codigoCI,
           'Nombre del Producto / Servicio': nombreCompleto,
           '¿Inventariable?': 'Si',
           'Visible en facturas de venta': 'Si',
@@ -104,7 +160,7 @@ export default function Exportar() {
           'Unidad de medida DIAN': '94',
           'Unidad de Medida Impresión Factura': '',
           'Referencia de Fábrica': producto?.REFERENCIA || '',
-          'Código de Barras': cb,
+          'Código de Barras': codigoCB,
           'Descripción Larga': '',
           'Código Impuesto Retención': '',
           'Código Impuesto Cargo': '1-IVA 19%',
@@ -193,18 +249,70 @@ export default function Exportar() {
         return;
       }
 
-      // Obtener códigos únicos de productos
-      const codigosUnicos = [...new Set(entradasFiltradas.map(e => e.CB))];
+      // Obtener códigos únicos de CI (no CB) de las entradas
+      const codigosUnicos = [...new Set(
+        entradasFiltradas
+          .filter(e => e.CI) // Solo entradas que tienen CI
+          .map(e => String(e.CI))
+      )];
+      
+      if (codigosUnicos.length === 0) {
+        setExportStatus('✗ No hay productos con código CI en el rango de fechas seleccionado');
+        setTimeout(() => setExportStatus(''), 3000);
+        return;
+      }
       
       // Obtener información completa de los productos
       const inventario = await repuestosAPI.getAll();
-      const productosMap = new Map(inventario.map(p => [String(p.CB), p]));
+      
+      // Detectar duplicados de CI
+      const ciCounts = new Map<string, number>();
+      inventario.forEach(p => {
+        if (p.CI) {
+          const ci = String(p.CI);
+          ciCounts.set(ci, (ciCounts.get(ci) || 0) + 1);
+        }
+      });
+      
+      const duplicados = Array.from(ciCounts.entries()).filter(([_, count]) => count > 1);
+      if (duplicados.length > 0) {
+        console.warn('⚠️ ADVERTENCIA: Se encontraron CIs duplicados en el inventario:', duplicados);
+      }
+      
+      // Crear mapa por CI (no por CB)
+      // Si hay duplicados, el Map solo guardará el último
+      const productosMap = new Map(
+        inventario
+          .filter(p => p.CI)
+          .map(p => [String(p.CI).trim(), p])
+      );
+      
+      console.log('Total productos en mapa:', productosMap.size);
+      console.log('Ejemplo de CIs en mapa:', Array.from(productosMap.keys()).slice(0, 10));
 
       // Crear datos para el Excel siguiendo el formato SIIGO
-      const data = codigosUnicos.map(cb => {
-        const producto = productosMap.get(String(cb));
-        const entradasProducto = entradasFiltradas.filter(e => String(e.CB) === String(cb));
+      const data = codigosUnicos.map(ci => {
+        const ciNormalizado = String(ci).trim();
+        const producto = productosMap.get(ciNormalizado);
+        const entradasProducto = entradasFiltradas.filter(e => String(e.CI).trim() === ciNormalizado);
         const precioVenta = Number(producto?.PRECIO || 0);
+        
+        // Debug: verificar mapeo de códigos
+        console.log('=== PROCESANDO CI:', ciNormalizado, '===');
+        console.log('Producto encontrado:', !!producto);
+        if (producto) {
+          console.log('  Inventario - PRODUCTO:', producto.PRODUCTO);
+          console.log('  Inventario - TIPO:', producto.TIPO);
+          console.log('  Inventario - MODELO:', producto.MODELO_ESPECIFICACION);
+          console.log('  Inventario - CB:', producto.CB);
+        } else {
+          console.warn('  ⚠️ NO SE ENCONTRÓ PRODUCTO EN INVENTARIO');
+        }
+        console.log('Entradas encontradas:', entradasProducto.length);
+        if (entradasProducto[0]) {
+          console.log('  Entrada - DESCRIPCION:', entradasProducto[0].DESCRIPCION);
+          console.log('  Entrada - CB:', entradasProducto[0].CB);
+        }
         
         // Combinar Producto, Tipo y Modelo/Especificación
         const nombreProducto = producto?.PRODUCTO || entradasProducto[0]?.DESCRIPCION || '';
@@ -215,10 +323,14 @@ export default function Exportar() {
           .filter(campo => campo && campo.trim() !== '')
           .join(' - ');
         
+        // Usar el CI directamente (ya es string)
+        const codigoCI = String(ci);
+        const codigoCB = String(producto?.CB || '');
+        
         return {
           'Tipo de Producto': 'P-Producto',
           'Categoría de Inventarios / Servicios': '1-Productos',
-          'Código del Producto': producto?.CI || cb,
+          'Código del Producto': codigoCI,
           'Nombre del Producto / Servicio': nombreCompleto,
           '¿Inventariable?': 'Si',
           'Visible en facturas de venta': 'Si',
@@ -226,7 +338,7 @@ export default function Exportar() {
           'Unidad de medida DIAN': '94',
           'Unidad de Medida Impresión Factura': '',
           'Referencia de Fábrica': producto?.REFERENCIA || '',
-          'Código de Barras': cb,
+          'Código de Barras': codigoCB,
           'Descripción Larga': '',
           'Código Impuesto Retención': '',
           'Código Impuesto Cargo': '1-IVA 19%',
@@ -252,6 +364,25 @@ export default function Exportar() {
 
       // Crear el libro de Excel
       const worksheet = XLSX.utils.json_to_sheet(data);
+      
+      // Forzar que los códigos se traten como texto en Excel
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        // Columna C = Código del Producto (índice 2)
+        const cellAddressCI = XLSX.utils.encode_cell({ r: R, c: 2 });
+        if (worksheet[cellAddressCI]) {
+          worksheet[cellAddressCI].t = 's'; // Forzar tipo string
+          worksheet[cellAddressCI].v = String(worksheet[cellAddressCI].v);
+        }
+        
+        // Columna K = Código de Barras (índice 10)
+        const cellAddressCB = XLSX.utils.encode_cell({ r: R, c: 10 });
+        if (worksheet[cellAddressCB]) {
+          worksheet[cellAddressCB].t = 's'; // Forzar tipo string
+          worksheet[cellAddressCB].v = String(worksheet[cellAddressCB].v);
+        }
+      }
+      
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Productos Nuevos');
 
