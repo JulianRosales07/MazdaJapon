@@ -24,7 +24,7 @@ export default function Configuracion() {
         nombre: '',
         email: '',
         password: '',
-        rol: 'usuario' as Rol,
+        rol: 'gestion_inventario' as Rol, // Cambiado de 'usuario' a un rol válido
     });
 
     useEffect(() => {
@@ -104,7 +104,7 @@ export default function Configuracion() {
             nombre: '',
             email: '',
             password: '',
-            rol: 'usuario',
+            rol: 'gestion_inventario',
         });
         setShowModal(true);
     };
@@ -378,7 +378,6 @@ export default function Configuracion() {
                                                     }`}
                                             >
                                                 {user.rol === 'administrador' && 'Administrador'}
-                                                {user.rol === 'usuario' && 'Usuario'}
                                                 {user.rol === 'gestion_ingresos' && 'Gestión Ingresos'}
                                                 {user.rol === 'gestion_egresos' && 'Gestión Egresos'}
                                                 {user.rol === 'gestion_inventario' && 'Gestión Inventario'}
@@ -501,7 +500,6 @@ export default function Configuracion() {
                                         }
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
                                     >
-                                        <option value="usuario">Usuario</option>
                                         <option value="administrador">Administrador</option>
                                         <option value="gestion_ingresos">Gestión de Ingresos</option>
                                         <option value="gestion_egresos">Gestión de Egresos</option>

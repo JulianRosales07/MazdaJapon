@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 // Tipos
-export type Rol = 'administrador' | 'usuario' | 'gestion_ingresos' | 'gestion_egresos' | 'gestion_inventario';
+export type Rol = 'administrador' | 'gestion_ingresos' | 'gestion_egresos' | 'gestion_inventario';
 
 export type Usuario = {
     id_usuario: number;
