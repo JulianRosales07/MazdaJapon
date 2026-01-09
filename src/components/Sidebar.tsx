@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Home, Package, LogOut, User, Settings, Bell, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Tag, Building2, BarChart3, PanelLeft } from 'lucide-react';
+import { Home, Package, LogOut, User, Settings, Bell, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Tag, Building2, BarChart3, PanelLeft, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Page } from '../lib/types';
 import LOGO from '../assets/mazda.png';
-
-type Page = 'dashboard' | 'inventory' | 'entradas' | 'salidas' | 'configuracion' | 'exportar' | 'marcas' | 'proveedores' | 'notificaciones' | 'perfil' | 'comparativa';
 
 type SidebarProps = {
   currentPage: Page;
@@ -89,7 +88,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         )}
 
 
-
         {permisos.puedeVerMarcas && (
           <button
             onClick={() => onNavigate('marcas')}
@@ -119,7 +117,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {/* Espaciador */}
         <div className="flex-1"></div>
 
-
         {/* Íconos inferiores */}
         {isAdmin && (
           <button
@@ -144,6 +141,19 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             title="Exportar"
           >
             <FileSpreadsheet className="w-5 h-5" />
+          </button>
+        )}
+
+        {isAdmin && (
+          <button
+            onClick={() => onNavigate('caja')}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${currentPage === 'caja'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            title="Caja"
+          >
+            <Wallet className="w-5 h-5" />
           </button>
         )}
 
@@ -236,7 +246,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               </button>
             )}
 
-
           </div>
 
           {/* Sección de Catálogos */}
@@ -283,21 +292,35 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           )}
 
           {/* Sección adicional */}
-          {permisos.puedeExportar && (
+          {(permisos.puedeExportar || isAdmin) && (
             <div className="mb-4">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
                 Herramientas
               </p>
-              <button
-                onClick={() => onNavigate('exportar')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'exportar'
-                  ? 'bg-gray-100 text-gray-900 font-medium'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Exportar</span>
-              </button>
+              {permisos.puedeExportar && (
+                <button
+                  onClick={() => onNavigate('exportar')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'exportar'
+                    ? 'bg-gray-100 text-gray-900 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Exportar</span>
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => onNavigate('caja')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${currentPage === 'caja'
+                    ? 'bg-gray-100 text-gray-900 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span>Caja</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -344,7 +367,6 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               {usuario?.rol === 'gestion_ingresos' && 'Gestión Ingresos'}
               {usuario?.rol === 'gestion_egresos' && 'Gestión Egresos'}
               {usuario?.rol === 'gestion_inventario' && 'Gestión Inventario'}
-              {usuario?.rol === 'usuario' && 'Usuario'}
             </span>
           </div>
 

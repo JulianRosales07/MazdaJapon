@@ -85,7 +85,6 @@ export default function Perfil() {
       gestion_ingresos: 'Gestión de Ingresos',
       gestion_egresos: 'Gestión de Egresos',
       gestion_inventario: 'Gestión de Inventario',
-      usuario: 'Usuario',
     };
     return roles[rol] || rol;
   };

@@ -9,7 +9,7 @@ export type Usuario = {
   id: number;
   nombre: string;
   email: string;
-  rol: 'administrador' | 'usuario';
+  rol: 'administrador' | 'gestion_ingresos' | 'gestion_egresos' | 'gestion_inventario';
   auth_user_id: string | null;
   created_at: string;
   updated_at: string;

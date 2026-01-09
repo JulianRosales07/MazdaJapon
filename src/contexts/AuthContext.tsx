@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     nombre: string,
-    rol: Rol = 'usuario'
+    rol: Rol = 'gestion_inventario'
   ) => {
     try {
       const user = await apiClient.createUsuario({

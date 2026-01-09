@@ -59,7 +59,7 @@ export const authService = {
         nombre: string;
         email: string;
         password: string;
-        rol?: 'administrador' | 'usuario';
+        rol?: 'administrador' | 'gestion_ingresos' | 'gestion_egresos' | 'gestion_inventario';
     }): Promise<{ usuario: Usuario | null; error: Error | null }> {
         try {
             // Crear usuario en Supabase Auth
@@ -69,7 +69,7 @@ export const authService = {
                 options: {
                     data: {
                         nombre: data.nombre,
-                        rol: data.rol || 'usuario',
+                        rol: data.rol || 'gestion_inventario',
                     },
                 },
             });

@@ -93,7 +93,7 @@ export const usuariosAPI = {
                 nombre: userData.nombre,
                 email: userData.email,
                 password: hashedPassword,
-                rol: userData.rol || 'usuario',
+                rol: userData.rol || 'gestion_inventario',
             }])
             .select()
             .single();
