@@ -113,6 +113,7 @@ export interface HistorialPrecio {
 export interface Caja {
   id_caja: number;
   usuario_id: number;
+  usuario_nombre?: string; // Nombre del usuario (viene del JOIN en algunas consultas)
   fecha_apertura: string;
   fecha_cierre?: string | null;
   jornada: 'mañana' | 'tarde';

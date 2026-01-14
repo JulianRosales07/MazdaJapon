@@ -42,6 +42,36 @@ export default function Salidas() {
     columna1: '',
   });
   const [isVentaExterna, setIsVentaExterna] = useState(false);
+  
+  // Estado para el carrito de productos
+  const [productosCarrito, setProductosCarrito] = useState<Array<{
+    cb: number;
+    ci: number;
+    descripcion: string;
+    valor: number;
+    cantidad: number;
+    esExterno: boolean;
+  }>>([]);
+
+  // Estado para el input de valor formateado
+  const [valorFormateado, setValorFormateado] = useState('');
+  
+  // Estado para el modal de advertencia de stock
+  const [showStockWarning, setShowStockWarning] = useState(false);
+  const [stockWarningData, setStockWarningData] = useState({
+    stockActual: 0,
+    enCarrito: 0,
+    solicitado: 0,
+    faltante: 0,
+    stockFinal: 0,
+  });
+  
+  // Estado para el modal de éxito
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successFactura, setSuccessFactura] = useState(0);
+  
+  // Estado para indicador de carga
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchProductos();
@@ -54,9 +84,15 @@ export default function Salidas() {
       CB: product.cb || product.CB || '',
       CI: product.ci || product.CI || '',
       PRODUCTO: product.producto || product.PRODUCTO || '',
+      TIPO: product.tipo || product.TIPO || null,
+      MODELO_ESPECIFICACION: product.modelo_especificacion || product.MODELO_ESPECIFICACION || null,
+      REFERENCIA: product.referencia || product.REFERENCIA || null,
+      MARCA: product.marca || product.MARCA || null,
       STOCK: product.stock || product.STOCK || 0,
       PRECIO: product.precio || product.PRECIO || 0,
-      MARCA: product.marca || product.MARCA || '',
+      DESCRIPCION_LARGA: product.descripcion_larga || product.DESCRIPCION_LARGA || null,
+      ESTANTE: product.estante || product.ESTANTE || null,
+      NIVEL: product.nivel || product.NIVEL || null,
     };
   };
 
@@ -144,7 +180,108 @@ export default function Salidas() {
       columna1: '',
     });
     setIsVentaExterna(false);
+    setProductosCarrito([]);
+    setValorFormateado('');
     setShowModal(true);
+  };
+
+  // Función para formatear valor en pesos colombianos
+  const formatearValorCOP = (valor: string) => {
+    // Remover todo excepto números
+    const soloNumeros = valor.replace(/\D/g, '');
+    
+    if (!soloNumeros) return '';
+    
+    // Convertir a número y formatear con separadores de miles
+    const numero = parseInt(soloNumeros);
+    return numero.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  // Manejar cambio en el campo de valor
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formateado = formatearValorCOP(inputValue);
+    setValorFormateado(formateado);
+    
+    // Guardar el valor numérico sin formato
+    const valorNumerico = parseInt(inputValue.replace(/\D/g, '')) || 0;
+    setFormData({ ...formData, valor: valorNumerico });
+  };
+
+  // Agregar producto al carrito
+  const agregarProductoAlCarrito = () => {
+    // Validaciones
+    if (isVentaExterna) {
+      if (!formData.descripcion || formData.valor <= 0 || formData.cantidad <= 0) {
+        alert('Complete todos los campos para la venta externa');
+        return;
+      }
+    } else {
+      if (!formData.cb || formData.cb === 0) {
+        alert('Debe seleccionar un producto válido ingresando el CI');
+        return;
+      }
+
+      const producto = productos.find(p => String(p.CB) === String(formData.cb));
+      if (!producto) {
+        alert('El producto seleccionado no existe en el inventario');
+        return;
+      }
+
+      // Verificar stock disponible considerando lo que ya está en el carrito
+      const cantidadEnCarrito = productosCarrito
+        .filter(item => item.cb === formData.cb)
+        .reduce((sum, item) => sum + item.cantidad, 0);
+      
+      const stockActual = parseFloat(String(producto.STOCK)) || 0;
+      const cantidadTotal = cantidadEnCarrito + Math.abs(formData.cantidad);
+
+      // Advertencia de stock insuficiente pero permitir continuar
+      if (stockActual < cantidadTotal) {
+        setStockWarningData({
+          stockActual: stockActual,
+          enCarrito: cantidadEnCarrito,
+          solicitado: cantidadTotal,
+          faltante: cantidadTotal - stockActual,
+          stockFinal: stockActual - cantidadTotal,
+        });
+        setShowStockWarning(true);
+        return;
+      }
+    }
+
+    confirmarAgregarAlCarrito();
+  };
+
+  // Confirmar agregar al carrito (después de la advertencia o directamente)
+  const confirmarAgregarAlCarrito = () => {
+    // Agregar al carrito
+    setProductosCarrito([...productosCarrito, {
+      cb: formData.cb,
+      ci: formData.ci,
+      descripcion: formData.descripcion,
+      valor: formData.valor,
+      cantidad: formData.cantidad,
+      esExterno: isVentaExterna,
+    }]);
+
+    // Limpiar formulario para agregar otro producto
+    setFormData({
+      ...formData,
+      cb: 0,
+      ci: 0,
+      descripcion: '',
+      valor: 0,
+      cantidad: 0,
+    });
+    setValorFormateado('');
+    setIsVentaExterna(false);
+    setShowStockWarning(false);
+  };
+
+  // Eliminar producto del carrito
+  const eliminarProductoDelCarrito = (index: number) => {
+    setProductosCarrito(productosCarrito.filter((_, i) => i !== index));
   };
 
   const handleEdit = (salida: Salida) => {
@@ -188,76 +325,58 @@ export default function Salidas() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar que haya productos en el carrito
+    if (productosCarrito.length === 0) {
+      alert('Debe agregar al menos un producto al carrito');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      if (modalMode === 'create') {
-        // Auto-generar número de factura si es 0
-        const finalFormData = { ...formData };
-        if (!finalFormData.n_factura) {
-          const facturasValidas = salidas
-            .map(s => s.n_factura || 0)
-            .filter(num => num > 0 && num < 100000);
-          const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
-          finalFormData.n_factura = maxFactura + 1;
-        }
-
-        // Si es venta externa, enviar cb y ci como null (productos externos al inventario)
-        if (isVentaExterna) {
-          // Para ventas externas, no se requiere CB ni CI
-          const ventaExternaData = {
-            n_factura: finalFormData.n_factura,
-            fecha: finalFormData.fecha,
-            cb: null,
-            ci: null,
-            descripcion: finalFormData.descripcion,
-            valor: finalFormData.valor,
-            cantidad: finalFormData.cantidad,
-            columna1: finalFormData.columna1,
-          };
-          
-          await apiClient.createSalida(ventaExternaData);
-          setShowModal(false);
-          await fetchSalidas();
-          return;
-        } else {
-          // Validar que el producto existe
-          if (!finalFormData.cb || finalFormData.cb === 0) {
-            alert('Debe seleccionar un producto válido ingresando el CI');
-            return;
-          }
-
-          // Buscar el producto en el inventario por CB
-          const producto = productos.find(p => String(p.CB) === String(finalFormData.cb));
-
-          if (!producto) {
-            alert('El producto seleccionado no existe en el inventario. Use "Venta externa" para productos no registrados.');
-            return;
-          }
-
-          // Verificar que hay suficiente stock
-          const stockActual = parseFloat(String(producto.STOCK)) || 0;
-          const cantidadSalida = Math.abs(finalFormData.cantidad);
-
-          if (stockActual < cantidadSalida) {
-            alert(`Stock insuficiente. Stock actual: ${stockActual}, Cantidad solicitada: ${cantidadSalida}`);
-            return;
-          }
-        }
-
-        // Crear la salida
-        await apiClient.createSalida(finalFormData);
-
-        // Recargar productos para reflejar el cambio de stock
-        await fetchProductos();
-      } else if (selectedSalida) {
-        // En modo edición, solo actualizar la salida sin modificar stock
-        await apiClient.updateSalida(selectedSalida.n_factura, formData);
+      // Auto-generar número de factura si es 0
+      let nFactura = formData.n_factura;
+      if (!nFactura) {
+        const facturasValidas = salidas
+          .map(s => s.n_factura || 0)
+          .filter(num => num > 0 && num < 100000);
+        const maxFactura = facturasValidas.length > 0 ? Math.max(...facturasValidas) : 0;
+        nFactura = maxFactura + 1;
       }
 
+      // Crear todas las salidas en paralelo para mayor velocidad
+      const promesas = productosCarrito.map(producto => {
+        const salidaData = {
+          n_factura: nFactura,
+          fecha: formData.fecha,
+          cb: producto.esExterno ? null : producto.cb,
+          ci: producto.esExterno ? null : producto.ci,
+          descripcion: producto.descripcion,
+          valor: producto.valor,
+          cantidad: producto.cantidad,
+          columna1: formData.columna1,
+        };
+
+        return apiClient.createSalida(salidaData);
+      });
+
+      // Esperar a que todas las salidas se creen
+      await Promise.all(promesas);
+
+      // Recargar datos
+      await Promise.all([fetchSalidas(), fetchProductos()]);
+
       setShowModal(false);
-      await fetchSalidas();
+      setProductosCarrito([]);
+      
+      // Mostrar modal de éxito personalizado
+      setShowSuccessModal(true);
+      setSuccessFactura(nFactura);
     } catch (error) {
       console.error('Error al guardar salida:', error);
-      alert('Error al guardar la salida. Verifique que el producto existe en el inventario.');
+      alert('Error al guardar la salida. Verifique los datos e intente nuevamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1093,268 +1212,158 @@ export default function Salidas() {
                   })()}
                 </div>
               ) : (
-                // Modo Crear: Formulario editable
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      N° Factura
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.n_factura || ''}
-                      onChange={(e) => setFormData({ ...formData, n_factura: parseInt(e.target.value) || 0 })}
-                      placeholder="Se genera automáticamente"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Dejar vacío para auto-generar</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.fecha ? new Date(formData.fecha.toString().slice(0, 4) + '-' + formData.fecha.toString().slice(4, 6) + '-' + formData.fecha.toString().slice(6, 8)).toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const dateStr = e.target.value.replace(/-/g, '');
-                        setFormData({ ...formData, fecha: parseInt(dateStr) });
-                      }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      CI {!isVentaExterna && '*'}
-                    </label>
-                    <input
-                      type="number"
-                      required={!isVentaExterna}
-                      value={formData.ci || ''}
-                      onChange={(e) => {
-                        const ciValue = parseInt(e.target.value) || 0;
-
-                        // Buscar producto por CI
-                        const productoEncontrado = productos.find(p => {
-                          const productCI = parseInt(String(p.CI));
-                          return !isNaN(productCI) && productCI === ciValue;
-                        });
-
-                        if (productoEncontrado) {
-                          // Autocompletar todos los campos
-                          setFormData({
-                            ...formData,
-                            ci: ciValue,
-                            cb: parseInt(String(productoEncontrado.CB)) || 0,
-                            descripcion: productoEncontrado.PRODUCTO || '',
-                            valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
-                          });
-                        } else {
-                          setFormData({ ...formData, ci: ciValue });
-                        }
-                      }}
-                      disabled={isVentaExterna}
-                      placeholder="Buscar CI"
-                      list="ci-list"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                    />
-                    <datalist id="ci-list">
-                      {Array.from(new Set(productos.map(p => p.CI))).filter(Boolean).map((ci, idx) => (
-                        <option key={idx} value={String(ci)} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      CB {!isVentaExterna && '*'}
-                    </label>
-                    <input
-                      type="number"
-                      required={!isVentaExterna}
-                      value={formData.cb || ''}
-                      onChange={(e) => {
-                        const cbValue = parseInt(e.target.value) || 0;
-
-                        // Buscar producto por CB
-                        const productoEncontrado = productos.find(p => String(p.CB) === String(cbValue));
-
-                        if (productoEncontrado) {
-                          // Autocompletar todos los campos
-                          setFormData({
-                            ...formData,
-                            cb: cbValue,
-                            ci: parseInt(String(productoEncontrado.CI)) || 0,
-                            descripcion: productoEncontrado.PRODUCTO || '',
-                            valor: parseFloat(String(productoEncontrado.PRECIO)) || 0,
-                          });
-                        } else {
-                          setFormData({ ...formData, cb: cbValue });
-                        }
-                      }}
-                      disabled={true}
-                      readOnly
-                      placeholder="Auto"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100 bg-gray-50"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Descripción {!isVentaExterna && '*'}
-                    </label>
-                    <input
-                      type="text"
-                      required={!isVentaExterna}
-                      value={formData.descripcion}
-                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      disabled={isVentaExterna}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Valor {!isVentaExterna && '*'}
-                    </label>
-                    <input
-                      type="number"
-                      required={!isVentaExterna}
-                      step="0.01"
-                      value={formData.valor || ''}
-                      onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
-                      disabled={isVentaExterna}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cantidad {!isVentaExterna && '*'}
-                    </label>
-                    <input
-                      type="number"
-                      required={!isVentaExterna}
-                      value={formData.cantidad || ''}
-                      onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
-                      disabled={isVentaExterna}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
-                    />
-                  </div>
-
-                  {/* Información del Producto Encontrado */}
-                  {!isVentaExterna && (formData.cb > 0 || formData.ci > 0) && (() => {
-                  const productoEncontrado = productos.find(p =>
-                    String(p.CB) === String(formData.cb) ||
-                    (formData.ci > 0 && parseInt(String(p.CI)) === formData.ci)
-                  );
-                  return productoEncontrado ? (
-                    <div className="md:col-span-2 bg-gray-50 border border-gray-200 rounded-lg p-4 mb-2">
-                      <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                        </svg>
-                        Información del Producto
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Producto</p>
-                          <p className="text-gray-900 font-medium">{productoEncontrado.PRODUCTO}</p>
-                        </div>
-                        {productoEncontrado.TIPO && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">Tipo</p>
-                            <p className="text-gray-900">{productoEncontrado.TIPO}</p>
-                          </div>
-                        )}
-                        {productoEncontrado.MARCA && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">Marca</p>
-                            <p className="text-gray-900">{productoEncontrado.MARCA}</p>
-                          </div>
-                        )}
-                        {productoEncontrado.REFERENCIA && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">Referencia</p>
-                            <p className="text-gray-900 font-mono text-xs">{productoEncontrado.REFERENCIA}</p>
-                          </div>
-                        )}
-                        {productoEncontrado.MODELO_ESPECIFICACION && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">Modelo</p>
-                            <p className="text-gray-900">{productoEncontrado.MODELO_ESPECIFICACION}</p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Stock Disponible</p>
-                          <p className={`font-semibold ${Number(productoEncontrado.STOCK) < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                            {productoEncontrado.STOCK} unidades
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    ) : null;
-                  })()}
-
-                  {/* Checkbox de Venta Externa */}
-                  <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
-                    <label className="flex items-center gap-3 cursor-pointer">
+                // Modo Crear: Formulario editable con carrito
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        N° Factura
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={isVentaExterna}
-                        onChange={(e) => {
-                          setIsVentaExterna(e.target.checked);
-                          if (e.target.checked) {
-                            // Limpiar campos cuando se activa venta externa
-                            setFormData({
-                              ...formData,
-                              ci: 0,
-                              cb: 0,
-                              descripcion: '',
-                              valor: 0,
-                              cantidad: 0,
-                            });
-                          }
-                        }}
-                        className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-2 focus:ring-gray-900"
+                        type="number"
+                        value={formData.n_factura || ''}
+                        onChange={(e) => setFormData({ ...formData, n_factura: parseInt(e.target.value) || 0 })}
+                        placeholder="Se genera automáticamente"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
                       />
-                      <span className="text-sm font-medium text-gray-700">Venta externa</span>
-                    </label>
+                      <p className="text-xs text-gray-500 mt-1">Dejar vacío para auto-generar</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fecha *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.fecha ? new Date(formData.fecha.toString().slice(0, 4) + '-' + formData.fecha.toString().slice(4, 6) + '-' + formData.fecha.toString().slice(6, 8)).toISOString().split('T')[0] : ''}
+                        onChange={(e) => {
+                          const dateStr = e.target.value.replace(/-/g, '');
+                          setFormData({ ...formData, fecha: parseInt(dateStr) });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                      />
+                    </div>
                   </div>
 
-                  {/* Campos de Venta Externa */}
-                  {isVentaExterna && (
-                    <>
+                  {/* Separador */}
+                  <div className="border-t border-gray-200 my-6"></div>
+
+                  {/* Sección de agregar productos */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Agregar Producto
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          CI {!isVentaExterna && '*'}
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.ci || ''}
+                          onChange={(e) => {
+                            const ciValue = parseInt(e.target.value) || 0;
+
+                            // Buscar producto por CI
+                            const productoEncontrado = productos.find(p => {
+                              const productCI = parseInt(String(p.CI));
+                              return !isNaN(productCI) && productCI === ciValue;
+                            });
+
+                            if (productoEncontrado) {
+                              // Construir descripción completa con todos los campos disponibles
+                              const partes = [];
+                              
+                              // Agregar cada campo si existe y no está vacío
+                              if (productoEncontrado.PRODUCTO && productoEncontrado.PRODUCTO.trim()) {
+                                partes.push(productoEncontrado.PRODUCTO.trim());
+                              }
+                              if (productoEncontrado.TIPO && productoEncontrado.TIPO.trim()) {
+                                partes.push(productoEncontrado.TIPO.trim());
+                              }
+                              if (productoEncontrado.MODELO_ESPECIFICACION && productoEncontrado.MODELO_ESPECIFICACION.trim()) {
+                                partes.push(productoEncontrado.MODELO_ESPECIFICACION.trim());
+                              }
+                              if (productoEncontrado.MARCA && productoEncontrado.MARCA.trim()) {
+                                partes.push(productoEncontrado.MARCA.trim());
+                              }
+                              
+                              const descripcionCompleta = partes.length > 0 ? partes.join(' - ') : productoEncontrado.PRODUCTO || '';
+                              
+                              console.log('Producto encontrado:', productoEncontrado);
+                              console.log('Descripción generada:', descripcionCompleta);
+                              
+                              // Autocompletar todos los campos
+                              const precioProducto = parseFloat(String(productoEncontrado.PRECIO)) || 0;
+                              setFormData({
+                                ...formData,
+                                ci: ciValue,
+                                cb: parseInt(String(productoEncontrado.CB)) || 0,
+                                descripcion: descripcionCompleta,
+                                valor: precioProducto,
+                              });
+                              // Formatear el valor para mostrarlo
+                              setValorFormateado(formatearValorCOP(precioProducto.toString()));
+                            } else {
+                              setFormData({ ...formData, ci: ciValue });
+                            }
+                          }}
+                          disabled={isVentaExterna}
+                          placeholder="Buscar CI"
+                          list="ci-list"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
+                        />
+                        <datalist id="ci-list">
+                          {Array.from(new Set(productos.map(p => p.CI))).filter(Boolean).map((ci, idx) => (
+                            <option key={idx} value={String(ci)} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          CB {!isVentaExterna && '*'}
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.cb || ''}
+                          disabled={true}
+                          readOnly
+                          placeholder="Auto"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100 bg-gray-50"
+                        />
+                      </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Descripción *
                         </label>
                         <input
                           type="text"
-                          required
                           value={formData.descripcion}
                           onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                          placeholder="Descripción del producto vendido"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                          disabled={!isVentaExterna && formData.cb > 0}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:bg-gray-100"
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Valor *
+                          Valor * (COP)
                         </label>
-                        <input
-                          type="number"
-                          required
-                          step="0.01"
-                          value={formData.valor || ''}
-                          onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
-                          placeholder="0.00"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                          <input
+                            type="text"
+                            value={valorFormateado}
+                            onChange={handleValorChange}
+                            placeholder="0"
+                            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
+                          />
+                        </div>
                       </div>
 
                       <div>
@@ -1363,16 +1372,147 @@ export default function Salidas() {
                         </label>
                         <input
                           type="number"
-                          required
                           value={formData.cantidad || ''}
                           onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
+                          onWheel={(e) => e.currentTarget.blur()}
                           placeholder="0"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
                         />
                       </div>
-                    </>
+
+                      {/* Información del Producto Encontrado */}
+                      {!isVentaExterna && (formData.cb > 0 || formData.ci > 0) && (() => {
+                        const productoEncontrado = productos.find(p =>
+                          String(p.CB) === String(formData.cb) ||
+                          (formData.ci > 0 && parseInt(String(p.CI)) === formData.ci)
+                        );
+                        return productoEncontrado ? (
+                          <div className="md:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-xs text-gray-600 font-medium">Producto</p>
+                                <p className="text-gray-900 font-medium">{productoEncontrado.PRODUCTO}</p>
+                              </div>
+                              {productoEncontrado.MARCA && (
+                                <div>
+                                  <p className="text-xs text-gray-600 font-medium">Marca</p>
+                                  <p className="text-gray-900">{productoEncontrado.MARCA}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs text-gray-600 font-medium">Stock Disponible</p>
+                                <p className={`font-semibold ${Number(productoEncontrado.STOCK) < 10 ? 'text-red-600' : 'text-green-600'}`}>
+                                  {productoEncontrado.STOCK} unidades
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+
+                      {/* Checkbox de Venta Externa */}
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isVentaExterna}
+                            onChange={(e) => {
+                              setIsVentaExterna(e.target.checked);
+                              if (e.target.checked) {
+                                // Limpiar campos cuando se activa venta externa
+                                setFormData({
+                                  ...formData,
+                                  ci: 0,
+                                  cb: 0,
+                                  descripcion: '',
+                                  valor: 0,
+                                  cantidad: 0,
+                                });
+                                setValorFormateado('');
+                              }
+                            }}
+                            className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-2 focus:ring-gray-900"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Venta externa (producto no registrado)</span>
+                        </label>
+                      </div>
+
+                      {/* Botón para agregar al carrito */}
+                      <div className="md:col-span-2">
+                        <button
+                          type="button"
+                          onClick={agregarProductoAlCarrito}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition font-medium flex items-center justify-center gap-2"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Agregar al Carrito
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Carrito de productos */}
+                  {productosCarrito.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                        </svg>
+                        Productos en el Carrito ({productosCarrito.length})
+                      </h3>
+                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="text-left py-2 px-3 font-semibold text-gray-700">Descripción</th>
+                              <th className="text-center py-2 px-3 font-semibold text-gray-700">Cantidad</th>
+                              <th className="text-right py-2 px-3 font-semibold text-gray-700">Valor Unit.</th>
+                              <th className="text-right py-2 px-3 font-semibold text-gray-700">Subtotal</th>
+                              <th className="text-center py-2 px-3 font-semibold text-gray-700 w-16"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {productosCarrito.map((item, index) => (
+                              <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-2 px-3">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{item.descripcion}</p>
+                                    {item.esExterno ? (
+                                      <p className="text-xs text-blue-600">Venta externa</p>
+                                    ) : (
+                                      <p className="text-xs text-gray-500">CI: {item.ci} | CB: {item.cb}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2 px-3 text-center font-medium">{item.cantidad}</td>
+                                <td className="py-2 px-3 text-right">${formatPrecio(item.valor)}</td>
+                                <td className="py-2 px-3 text-right font-semibold">${formatPrecio(item.valor * item.cantidad)}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => eliminarProductoDelCarrito(index)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                            <tr>
+                              <td colSpan={3} className="py-3 px-3 text-right font-bold text-gray-900">Total:</td>
+                              <td className="py-3 px-3 text-right font-bold text-gray-900 text-lg">
+                                ${formatPrecio(productosCarrito.reduce((sum, item) => sum + (item.valor * item.cantidad), 0))}
+                              </td>
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
               <div className="flex gap-3 mt-6">
@@ -1380,14 +1520,31 @@ export default function Salidas() {
                   <>
                     <button
                       type="submit"
-                      className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium"
+                      disabled={productosCarrito.length === 0 || isSubmitting}
+                      className="flex-1 bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Crear Salida
+                      {isSubmitting ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Registrando...
+                        </>
+                      ) : (
+                        <>
+                          Registrar Salida ({productosCarrito.length} {productosCarrito.length === 1 ? 'producto' : 'productos'})
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowModal(false)}
-                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
+                      onClick={() => {
+                        setShowModal(false);
+                        setProductosCarrito([]);
+                      }}
+                      disabled={isSubmitting}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Cancelar
                     </button>
@@ -1403,6 +1560,142 @@ export default function Salidas() {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal de Advertencia de Stock */}
+      {showStockWarning && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]"
+          onClick={() => setShowStockWarning(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              {/* Icono y título */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Advertencia de Stock</h3>
+                  <p className="text-sm text-gray-600">Stock insuficiente para esta operación</p>
+                </div>
+              </div>
+
+              {/* Información del stock */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Stock disponible:</span>
+                  <span className="text-base font-semibold text-gray-900">{stockWarningData.stockActual} unidades</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Ya en carrito:</span>
+                  <span className="text-base font-semibold text-gray-900">{stockWarningData.enCarrito} unidades</span>
+                </div>
+                <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total solicitado:</span>
+                  <span className="text-base font-bold text-gray-900">{stockWarningData.solicitado} unidades</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Faltante:</span>
+                  <span className="text-base font-semibold text-red-600">{stockWarningData.faltante} unidades</span>
+                </div>
+              </div>
+
+              {/* Advertencia de stock negativo */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">El stock quedará en negativo</p>
+                    <p className="text-sm text-red-700 mt-1">
+                      Stock resultante: <span className="font-bold">{stockWarningData.stockFinal} unidades</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pregunta */}
+              <p className="text-sm text-gray-700 mb-6 text-center">
+                ¿Desea continuar con esta operación de todas formas?
+              </p>
+
+              {/* Botones */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowStockWarning(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-200 transition font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarAgregarAlCarrito}
+                  className="flex-1 bg-yellow-600 text-white py-2.5 px-4 rounded-lg hover:bg-yellow-700 transition font-medium"
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito */}
+      {showSuccessModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]"
+          onClick={() => setShowSuccessModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              {/* Icono de éxito animado */}
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Título */}
+              <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+                ¡Salida Registrada!
+              </h3>
+
+              {/* Mensaje */}
+              <p className="text-gray-600 text-center mb-6">
+                La salida se ha registrado exitosamente
+              </p>
+
+              {/* Información de la factura */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-1">Número de Factura</p>
+                  <p className="text-3xl font-bold text-blue-600">N° {successFactura}</p>
+                </div>
+              </div>
+
+              {/* Botón */}
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Entendido
+              </button>
+            </div>
           </div>
         </div>
       )}
