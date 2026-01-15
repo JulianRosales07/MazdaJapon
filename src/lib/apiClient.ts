@@ -482,6 +482,424 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // =====================================================
+  // MÉTODOS DE CAJA
+  // =====================================================
+
+  // Cajas - Gestión de aperturas y cierres
+  async getCajas() {
+    return this.request<any>(`/caja/cajas`);
+  }
+
+  async abrirCaja(data: any) {
+    return this.request<any>(`/caja/cajas`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCajaById(id: number) {
+    return this.request<any>(`/caja/cajas/${id}`);
+  }
+
+  async updateCaja(id: number, data: any) {
+    return this.request<any>(`/caja/cajas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verificarCajaAbierta(usuario_id: number) {
+    return this.request<any>(`/caja/cajas/usuario/${usuario_id}/abierta`);
+  }
+
+  async getTotalesCaja(id: number) {
+    return this.request<any>(`/caja/cajas/${id}/totales`);
+  }
+
+  async cerrarCaja(id: number, data: any) {
+    return this.request<any>(`/caja/cajas/${id}/cerrar`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // =====================================================
+  // VENTAS - Registro de ventas en caja
+  // =====================================================
+  
+  // Endpoints /api/caja/ventas
+  async getVentas(caja_id?: number) {
+    const query = caja_id ? `?caja_id=${caja_id}` : '';
+    return this.request<any>(`/caja/ventas${query}`);
+  }
+
+  async crearVenta(data: any) {
+    return this.request<any>(`/caja/ventas`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getVentaById(id: number) {
+    return this.request<any>(`/caja/ventas/${id}`);
+  }
+
+  async updateVenta(id: number, data: any) {
+    return this.request<any>(`/caja/ventas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteVenta(id: number) {
+    return this.request<any>(`/caja/ventas/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Endpoints /api/ventas (alternativos)
+  async getAllVentas() {
+    return this.request<any>(`/ventas`);
+  }
+
+  async crearVentaGeneral(data: any) {
+    return this.request<any>(`/ventas`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getVentaGeneralById(id: number) {
+    return this.request<any>(`/ventas/${id}`);
+  }
+
+  async updateVentaGeneral(id: number, data: any) {
+    return this.request<any>(`/ventas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteVentaGeneral(id: number) {
+    return this.request<any>(`/ventas/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Reportes de Ventas
+  async getReporteVentasPorPeriodo(params?: { fecha_inicio?: string; fecha_fin?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/ventas/reportes/periodo${query ? `?${query}` : ''}`);
+  }
+
+  async getReporteVentasPorMetodoPago(params?: { fecha_inicio?: string; fecha_fin?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/ventas/reportes/metodo-pago${query ? `?${query}` : ''}`);
+  }
+
+  // =====================================================
+  // GASTOS - Registro de gastos en caja
+  // =====================================================
+  
+  // Endpoints /api/caja/gastos
+  async getGastos(caja_id?: number) {
+    const query = caja_id ? `?caja_id=${caja_id}` : '';
+    return this.request<any>(`/caja/gastos${query}`);
+  }
+
+  async crearGasto(data: any) {
+    return this.request<any>(`/caja/gastos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getGastoById(id: number) {
+    return this.request<any>(`/caja/gastos/${id}`);
+  }
+
+  async updateGasto(id: number, data: any) {
+    return this.request<any>(`/caja/gastos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGasto(id: number) {
+    return this.request<any>(`/caja/gastos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Endpoints /api/gastos (alternativos)
+  async getAllGastos() {
+    return this.request<any>(`/gastos`);
+  }
+
+  async crearGastoGeneral(data: any) {
+    return this.request<any>(`/gastos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getGastoGeneralById(id: number) {
+    return this.request<any>(`/gastos/${id}`);
+  }
+
+  async updateGastoGeneral(id: number, data: any) {
+    return this.request<any>(`/gastos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGastoGeneral(id: number) {
+    return this.request<any>(`/gastos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Reportes de Gastos
+  async getReporteGastosPorCategoria(params?: { fecha_inicio?: string; fecha_fin?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/gastos/reportes/categoria${query ? `?${query}` : ''}`);
+  }
+
+  async getReporteGastosPorMetodoPago(params?: { fecha_inicio?: string; fecha_fin?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/gastos/reportes/metodo-pago${query ? `?${query}` : ''}`);
+  }
+
+  // =====================================================
+  // CATEGORÍAS - Categorías y subcategorías de gastos
+  // =====================================================
+  
+  // Endpoints /api/caja/categorias
+  async getCategoriasGastos() {
+    return this.request<any>(`/caja/categorias`);
+  }
+
+  async getSubcategoriasPorCategoria(categoria_id: number) {
+    return this.request<any>(`/caja/categorias/${categoria_id}/subcategorias`);
+  }
+
+  // Endpoints /api/categorias (alternativos)
+  async getAllCategorias() {
+    return this.request<any>(`/categorias`);
+  }
+
+  async crearCategoria(data: any) {
+    return this.request<any>(`/categorias`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCategoriaById(id: number) {
+    return this.request<any>(`/categorias/${id}`);
+  }
+
+  async updateCategoria(id: number, data: any) {
+    return this.request<any>(`/categorias/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCategoria(id: number) {
+    return this.request<any>(`/categorias/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSubcategoriasByCategoriaId(categoria_id: number) {
+    return this.request<any>(`/categorias/${categoria_id}/subcategorias`);
+  }
+
+  async getSubcategoriaById(id: number) {
+    return this.request<any>(`/categorias/subcategorias/${id}`);
+  }
+
+  async updateSubcategoria(id: number, data: any) {
+    return this.request<any>(`/categorias/subcategorias/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSubcategoria(id: number) {
+    return this.request<any>(`/categorias/subcategorias/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async crearSubcategoria(data: any) {
+    return this.request<any>(`/categorias/subcategorias`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // =====================================================
+  // REPORTES CAJA - Reportes y estadísticas de caja
+  // =====================================================
+  
+  async getReporteDiarioCaja(params?: { fecha?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/caja/reportes/diario${query ? `?${query}` : ''}`);
+  }
+
+  async getReporteMensualCaja(params?: { mes?: number; anio?: number }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/caja/reportes/mensual${query ? `?${query}` : ''}`);
+  }
+
+  async getResumenVentasPorMetodo(caja_id: number) {
+    return this.request<any>(`/caja/reportes/cajas/${caja_id}/ventas-metodo`);
+  }
+
+  async getResumenGastosPorCategoria(caja_id: number) {
+    return this.request<any>(`/caja/reportes/cajas/${caja_id}/gastos-categoria`);
+  }
+
+  // =====================================================
+  // CAJA FUERTE - Gestión de caja fuerte
+  // =====================================================
+  
+  // Endpoints /api/caja/caja-fuerte
+  async getSaldoCajaFuerte() {
+    return this.request<any>(`/caja/caja-fuerte/saldo`);
+  }
+
+  async getMovimientosCajaFuerte() {
+    return this.request<any>(`/caja/caja-fuerte/movimientos`);
+  }
+
+  async registrarMovimientoCajaFuerte(data: {
+    tipo_movimiento: 'DEPOSITO' | 'RETIRO';
+    monto: number;
+    descripcion: string;
+    usuario_registro: number;
+    caja_id?: number;
+    observaciones?: string;
+  }) {
+    return this.request<any>(`/caja/caja-fuerte/movimientos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMovimientoCajaFuerteById(id: number) {
+    return this.request<any>(`/caja/caja-fuerte/movimientos/${id}`);
+  }
+
+  async actualizarMovimientoCajaFuerte(id: number, data: any) {
+    return this.request<any>(`/caja/caja-fuerte/movimientos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async eliminarMovimientoCajaFuerte(id: number) {
+    return this.request<any>(`/caja/caja-fuerte/movimientos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getHistorialCajaFuerte() {
+    return this.request<any>(`/caja/caja-fuerte/historial`);
+  }
+
+  // Endpoints /api/caja-fuerte (alternativos)
+  async getSaldoCajaFuerteGeneral() {
+    return this.request<any>(`/caja-fuerte/saldo`);
+  }
+
+  async getMovimientosCajaFuerteGeneral() {
+    return this.request<any>(`/caja-fuerte/movimientos`);
+  }
+
+  async registrarMovimientoCajaFuerteGeneral(data: {
+    tipo_movimiento: 'DEPOSITO' | 'RETIRO';
+    monto: number;
+    descripcion: string;
+    usuario_registro: number;
+    caja_id?: number;
+    observaciones?: string;
+  }) {
+    return this.request<any>(`/caja-fuerte/movimientos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMovimientoCajaFuerteGeneralById(id: number) {
+    return this.request<any>(`/caja-fuerte/movimientos/${id}`);
+  }
+
+  async actualizarMovimientoCajaFuerteGeneral(id: number, data: any) {
+    return this.request<any>(`/caja-fuerte/movimientos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async eliminarMovimientoCajaFuerteGeneral(id: number) {
+    return this.request<any>(`/caja-fuerte/movimientos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getHistorialCajaFuerteGeneral() {
+    return this.request<any>(`/caja-fuerte/historial`);
+  }
+
+  async getFlujoDiarioCajaFuerte(params?: { fecha?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/caja-fuerte/flujo-diario${query ? `?${query}` : ''}`);
+  }
+
+  // =====================================================
+  // REPORTES GENERALES
+  // =====================================================
+  
+  async getReporteDiario(params?: { fecha?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/reportes/diario${query ? `?${query}` : ''}`);
+  }
+
+  async getVistaReporteDiario(params?: { fecha?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request<any>(`/reportes/vista-diario${query ? `?${query}` : ''}`);
+  }
+
+  async getAllReportes() {
+    return this.request<any>(`/reportes`);
+  }
+
+  async getReporteById(id: number) {
+    return this.request<any>(`/reportes/${id}`);
+  }
+
+  async deleteReporte(id: number) {
+    return this.request<any>(`/reportes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getReportePorFecha(fecha: string) {
+    return this.request<any>(`/reportes/fecha/${fecha}`);
+  }
+
+  async actualizarReporte(data?: { fecha?: string }) {
+    return this.request<any>(`/reportes/actualizar`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

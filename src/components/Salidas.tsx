@@ -20,6 +20,7 @@ export default function Salidas() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [salidaToDelete, setSalidaToDelete] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más reciente primero
+  const [sortBy, setSortBy] = useState<'fecha' | 'factura'>('fecha'); // Campo por el cual ordenar
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // Filtro por mes (formato: YYYYMM)
   const [showDevolucionModal, setShowDevolucionModal] = useState(false);
   const [devolucionData, setDevolucionData] = useState({
@@ -461,44 +462,54 @@ export default function Salidas() {
       });
     }
 
-    // Luego ordenar por fecha
+    // Luego ordenar según el campo seleccionado
     const sorted = [...filtered].sort((a, b) => {
-      const getFechaTime = (fecha: number | string | null | undefined) => {
-        if (!fecha) return 0;
+      if (sortBy === 'fecha') {
+        // Ordenar por fecha
+        const getFechaTime = (fecha: number | string | null | undefined) => {
+          if (!fecha) return 0;
+          
+          try {
+            let date: Date;
+            const str = String(fecha);
+            
+            // Si es formato ISO (YYYY-MM-DD)
+            if (str.includes('-')) {
+              date = new Date(str);
+            }
+            // Si es un número de 8 dígitos (YYYYMMDD)
+            else if (/^\d{8}$/.test(str)) {
+              const year = parseInt(str.slice(0, 4));
+              const month = parseInt(str.slice(4, 6)) - 1;
+              const day = parseInt(str.slice(6, 8));
+              date = new Date(year, month, day);
+            } else {
+              date = new Date(fecha);
+            }
+            
+            return isNaN(date.getTime()) ? 0 : date.getTime();
+          } catch {
+            return 0;
+          }
+        };
+
+        const fechaA = getFechaTime(a.fecha);
+        const fechaB = getFechaTime(b.fecha);
+
+        const comparison = fechaB - fechaA;
+        return sortOrder === 'desc' ? comparison : -comparison;
+      } else {
+        // Ordenar por número de factura
+        const facturaA = Number(a.n_factura) || 0;
+        const facturaB = Number(b.n_factura) || 0;
         
-        try {
-          let date: Date;
-          const str = String(fecha);
-          
-          // Si es formato ISO (YYYY-MM-DD)
-          if (str.includes('-')) {
-            date = new Date(str);
-          }
-          // Si es un número de 8 dígitos (YYYYMMDD)
-          else if (/^\d{8}$/.test(str)) {
-            const year = parseInt(str.slice(0, 4));
-            const month = parseInt(str.slice(4, 6)) - 1;
-            const day = parseInt(str.slice(6, 8));
-            date = new Date(year, month, day);
-          } else {
-            date = new Date(fecha);
-          }
-          
-          return isNaN(date.getTime()) ? 0 : date.getTime();
-        } catch {
-          return 0;
-        }
-      };
-
-      const fechaA = getFechaTime(a.fecha);
-      const fechaB = getFechaTime(b.fecha);
-
-      const comparison = fechaB - fechaA;
-      return sortOrder === 'desc' ? comparison : -comparison;
+        const comparison = facturaB - facturaA;
+        return sortOrder === 'desc' ? comparison : -comparison;
+      }
     });
 
     return sorted;
-  }, [salidas, searchTerm, selectedMonth, sortOrder]);
+  }, [salidas, searchTerm, selectedMonth, sortOrder, sortBy]);
 
   const totalPages = Math.ceil(filteredSalidas.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -690,19 +701,42 @@ export default function Salidas() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">N° Factura</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                       <button
                         onClick={() => {
-                          const newOrder = sortOrder === 'desc' ? 'asc' : 'desc';
-                          setSortOrder(newOrder);
-                          console.log('Orden cambiado a:', newOrder);
+                          if (sortBy === 'factura') {
+                            setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                          } else {
+                            setSortBy('factura');
+                            setSortOrder('desc');
+                          }
+                        }}
+                        className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                      >
+                        N° Factura
+                        <ArrowUpDown className="w-4 h-4" />
+                        {sortBy === 'factura' && (
+                          <span className="text-xs ml-1">({sortOrder === 'desc' ? '↓' : '↑'})</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                      <button
+                        onClick={() => {
+                          if (sortBy === 'fecha') {
+                            setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                          } else {
+                            setSortBy('fecha');
+                            setSortOrder('desc');
+                          }
                         }}
                         className="flex items-center gap-1 hover:text-gray-900 transition-colors"
                       >
                         Fecha
                         <ArrowUpDown className="w-4 h-4" />
-                        <span className="text-xs ml-1">({sortOrder === 'desc' ? '↓' : '↑'})</span>
+                        {sortBy === 'fecha' && (
+                          <span className="text-xs ml-1">({sortOrder === 'desc' ? '↓' : '↑'})</span>
+                        )}
                       </button>
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">CI</th>
